@@ -1,0 +1,28 @@
+WEBVTT
+Kind: captions
+Language: en
+
+00:00:00.000 --> 00:00:02.500
+Welcome to this in-depth guide
+on modern JavaScript execution context.
+Today we are going to explore
+
+00:00:02.500 --> 00:00:05.000
+on modern JavaScript execution context.
+Today we are going to explore
+how the Call Stack and V8 engine work.
+
+00:00:05.000 --> 00:00:07.800
+Today we are going to explore
+how the Call Stack and V8 engine work.
+Technically bolo toh execution context is an abstract concept.
+
+00:00:07.800 --> 00:00:10.500
+how the Call Stack and V8 engine work.
+Technically bolo toh execution context is an abstract concept.
+It manages the code being evaluated and executed.
+
+00:00:10.500 --> 00:00:13.200
+Technically bolo toh execution context is an abstract concept.
+It manages the code being evaluated and executed.
+Dhayan se samjho how lexical environments bind variables.

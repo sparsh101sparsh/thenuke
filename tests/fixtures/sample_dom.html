@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>JavaScript Concurrency Model & Architecture Guide</title>
+</head>
+<body>
+  <header>
+    <h1>Modern JavaScript Runtime Internals</h1>
+    <p class="subtitle">Complete Architectural Reference</p>
+  </header>
+  <nav>
+    <ul>
+      <li><a href="#event-loop">Event Loop</a></li>
+      <li><a href="#call-stack">Call Stack</a></li>
+      <li><a href="#code-samples">Code Samples</a></li>
+    </ul>
+  </nav>
+  <main>
+    <section id="event-loop">
+      <h2>The Event Loop Mechanism</h2>
+      <p>The event loop monitors the Call Stack and the Task Queues. When the Call Stack is empty, it pushes the first task from the queue onto the stack.</p>
+    </section>
+    <section id="code-samples">
+      <h2>ES2024+ Native Implementation</h2>
+      <pre><code class="language-javascript">const connectionPool = new Set([101, 102, 103]);
+const activeSockets = new Set([102, 104]);
+const intersection = connectionPool.intersection(activeSockets);
+console.log(intersection); // Output: Set(1) { 102 }</code></pre>
+    </section>
+  </main>
+  <footer>
+    <p>&copy; 2026 Documentation Engine</p>
+  </footer>
+</body>
+</html>

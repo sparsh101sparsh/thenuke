@@ -1,0 +1,95 @@
+{
+  "corpus_id": "corpus_v8_event_loop_2026",
+  "timestamp": "2026-10-09T20:45:00Z",
+  "sources": [
+    {
+      "source_type": "youtube",
+      "identifier": "https://www.youtube.com/watch?v=mock_v8_01",
+      "title": "V8 Engine Internals and Event Loop Mechanics",
+      "metadata": {
+        "duration": 3600,
+        "uploader": "Engineering Deep Dives",
+        "file_type": "video"
+      },
+      "chapters": [
+        {
+          "chapter_index": 1,
+          "title": "Introduction to Execution Context and Call Stack",
+          "start_time": 0.0,
+          "end_time": 600.0,
+          "text": "Technically bolo toh execution context is created whenever any function is invoked. Call Stack manages active frames."
+        },
+        {
+          "chapter_index": 2,
+          "title": "Microtasks vs Macrotasks in Event Loop",
+          "start_time": 600.0,
+          "end_time": 1800.0,
+          "text": "Dhayan se samjho: Microtask Queue empties completely before the next macrotask executes."
+        }
+      ],
+      "extracted_code_blocks": [
+        {
+          "language": "javascript",
+          "code": "const { promise, resolve } = Promise.withResolvers();\npromise.then((val) => console.log('Resolved:', val)); // Output: Resolved: 42\nresolve(42);"
+        }
+      ],
+      "extracted_images": []
+    },
+    {
+      "source_type": "web",
+      "identifier": "https://developer.example.com/js/event-loop",
+      "title": "The JavaScript Event Loop Explained",
+      "metadata": {
+        "duration": 0,
+        "uploader": "WebDocs",
+        "file_type": "html"
+      },
+      "chapters": [
+        {
+          "chapter_index": 1,
+          "title": "Event Loop Tick Phases",
+          "start_time": 0.0,
+          "end_time": 0.0,
+          "text": "The event loop has distinct phases: timers, pending callbacks, idle/prepare, poll, check, and close callbacks."
+        }
+      ],
+      "extracted_code_blocks": [
+        {
+          "language": "javascript",
+          "code": "const items = [{ id: 1, type: 'telemetry' }, { id: 2, type: 'billing' }];\nconst grouped = Object.groupBy(items, item => item.type);\n// Output: { telemetry: [{ id: 1, type: 'telemetry' }], billing: [{ id: 2, type: 'billing' }] }"
+        }
+      ],
+      "extracted_images": []
+    },
+    {
+      "source_type": "local_file",
+      "identifier": "fixtures/sample_doc.pdf",
+      "title": "Advanced V8 Engine Architecture Manual",
+      "metadata": {
+        "duration": 0,
+        "uploader": "Local System",
+        "file_type": "pdf"
+      },
+      "chapters": [
+        {
+          "chapter_index": 1,
+          "title": "V8 Compilation Pipeline",
+          "start_time": 0.0,
+          "end_time": 0.0,
+          "text": "Ignition interpreter produces bytecode from AST, while TurboFan performs JIT optimization."
+        }
+      ],
+      "extracted_code_blocks": [],
+      "extracted_images": []
+    }
+  ],
+  "aggregated_topics": [
+    "Execution Context",
+    "Call Stack",
+    "Event Loop",
+    "Microtasks",
+    "Macrotasks",
+    "V8 Engine",
+    "JIT Compilation"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "level_of_detail": "senior_architect",
+  "visual_inclusion_threshold": "strict_need_based",
+  "audience_focus": "faang_interview",
+  "target_language": "roman_hinglish_zero_devanagari",
+  "domain_priorities": [
+    "event_loop",
+    "v8_internals",
+    "concurrency",
+    "memory_management"
+  ],
+  "created_at": "2026-10-09T20:50:00Z"
+}
