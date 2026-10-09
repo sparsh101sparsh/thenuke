@@ -50,11 +50,11 @@ A4_WIDTH_PT = 595.28
 A4_HEIGHT_PT = 841.89
 MARGIN_PT = 54.0  # 54pt ≈ 19mm
 
-FONT_TITLE = "helv"        # Helvetica (PyMuPDF built-in alias)
-FONT_BODY = "helv"
-FONT_BOLD = "helvB"
-FONT_ITALIC = "helvO"
-FONT_MONO = "cour"         # Courier (PyMuPDF built-in alias)
+FONT_TITLE = "hebo"        # Helvetica-Bold
+FONT_BODY = "helv"         # Helvetica-Regular
+FONT_BOLD = "hebo"         # Helvetica-Bold
+FONT_ITALIC = "heit"       # Helvetica-Oblique
+FONT_MONO = "cour"         # Courier-Regular
 
 SIZE_DOC_TITLE = 14.0
 SIZE_PHASE_HEADER = 13.0
@@ -649,15 +649,15 @@ def compile_markdown_to_pdf(
 
         for block in blocks:
             if block.kind == "phase_header":
-                ensure_space(30)
-                cur_page.insert_text(
-                    fitz.Point(MARGIN_PT, cursor_y),
-                    block.text.upper()[:90],
+                ensure_space(36)
+                cur_page.insert_textbox(
+                    fitz.Rect(MARGIN_PT, cursor_y, A4_WIDTH_PT - MARGIN_PT, cursor_y + 32),
+                    block.text.upper(),
                     fontname=FONT_BOLD,
                     fontsize=SIZE_PHASE_HEADER,
                     color=Palette.BLACK,
                 )
-                cursor_y += SIZE_PHASE_HEADER + 6
+                cursor_y += SIZE_PHASE_HEADER + 8
                 # Underline
                 shape = cur_page.new_shape()
                 shape.draw_line(
@@ -669,15 +669,15 @@ def compile_markdown_to_pdf(
                 cursor_y += 8
 
             elif block.kind == "chapter_title":
-                ensure_space(22)
-                cur_page.insert_text(
-                    fitz.Point(MARGIN_PT, cursor_y),
-                    block.text[:100],
+                ensure_space(28)
+                cur_page.insert_textbox(
+                    fitz.Rect(MARGIN_PT, cursor_y, A4_WIDTH_PT - MARGIN_PT, cursor_y + 26),
+                    block.text,
                     fontname=FONT_BOLD,
                     fontsize=SIZE_CHAPTER_TITLE,
                     color=Palette.BLACK,
                 )
-                cursor_y += SIZE_CHAPTER_TITLE + 6
+                cursor_y += SIZE_CHAPTER_TITLE + 8
 
             elif block.kind == "callout":
                 box_h = 52.0
@@ -717,15 +717,15 @@ def compile_markdown_to_pdf(
                 cursor_y += code_h + 6
 
             elif block.kind == "challenge":
-                ensure_space(18)
-                cur_page.insert_text(
-                    fitz.Point(MARGIN_PT, cursor_y),
-                    block.text[:100],
+                ensure_space(22)
+                cur_page.insert_textbox(
+                    fitz.Rect(MARGIN_PT, cursor_y, A4_WIDTH_PT - MARGIN_PT, cursor_y + 22),
+                    block.text,
                     fontname=FONT_BOLD,
                     fontsize=SIZE_SUBHEADING,
                     color=Palette.CHARCOAL,
                 )
-                cursor_y += SIZE_SUBHEADING + 4
+                cursor_y += SIZE_SUBHEADING + 6
 
             else:  # body
                 body_lines = block.text.split("\n")

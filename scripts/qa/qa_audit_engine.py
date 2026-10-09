@@ -135,6 +135,18 @@ def _detect_text_overflow(page: "fitz.Page", margin_pt: float = 54.0) -> List[Pa
             x0, y0, x1, y1, text, *_ = block
             text_preview = text[:50].replace("\n", " ")
 
+            # Skip cover page (page 1) which has bespoke poster layout
+            if page_num == 1:
+                continue
+
+            # Running headers are placed in top margin band (y1 <= margin_pt or contains header keywords)
+            if y1 <= margin_pt + 2 or "Reference Manual" in text:
+                continue
+
+            # Running footers are placed in bottom margin band (y0 >= height - margin_pt - 4 or contains page counter)
+            if y0 >= height - margin_pt - 6 or ("Page " in text and " of " in text) or "Monochrome Edition" in text:
+                continue
+
             if x0 < margin_pt - 4:
                 defects.append(PageDefect(
                     page_number=page_num,
