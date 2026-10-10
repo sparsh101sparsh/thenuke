@@ -154,10 +154,7 @@ def md_to_reportlab_html(text: str) -> str:
     text = re.sub(r"\$\$([^\$]+)\$\$", math_store, text)
     text = re.sub(r"\$([^\$]+)\$", math_store, text)
 
-    # 1. Escape bare & that are not already valid HTML entities
-    text = re.sub(r"&(?!(?:amp|lt|gt|quot|le|ge|ne|middot|times|plusmn|isin|notin|asymp|infin|Sigma|Pi|alpha|beta|gamma|lambda|pi|theta|sigma|radic|#\d+|#x[0-9a-fA-F]+);)", "&amp;", text)
-
-    # 2. Extract inline code `foo` into placeholders to prevent cross-interaction with **
+    # 1. Extract inline code `foo` into placeholders to prevent cross-interaction with ** and entity escaping
     codes: List[str] = []
     def code_store(m: re.Match) -> str:
         raw = m.group(1)
@@ -167,6 +164,9 @@ def md_to_reportlab_html(text: str) -> str:
         return f"___CODE_PH_{idx}___"
 
     text = re.sub(r"`([^`]+)`", code_store, text)
+
+    # 2. Escape bare & that are not already valid HTML entities
+    text = re.sub(r"&(?!(?:amp|lt|gt|quot|le|ge|ne|middot|times|plusmn|isin|notin|asymp|infin|Sigma|Pi|alpha|beta|gamma|lambda|pi|theta|sigma|radic|#\d+|#x[0-9a-fA-F]+);)", "&amp;", text)
 
     # 3. Convert **bold** to <b>bold</b>
     text = re.sub(r"\*\*([^*]+)\*\*", r"<b>\1</b>", text)
@@ -963,7 +963,7 @@ class ReferenceManualBuilder:
                 continue
 
             # 7. Section Header
-            if line.startswith("### ") or line.startswith("## "):
+            if line.startswith("#### ") or line.startswith("### ") or line.startswith("## "):
                 sec_title = line.lstrip("# ").strip()
                 if "Senior Architect Analysis" in sec_title:
                     safe_page_break()
