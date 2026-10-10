@@ -92,7 +92,11 @@ def _save_json(path: Path, data: Dict) -> None:
 # Stage 1 — Ingestion
 # ---------------------------------------------------------------------------
 
-def run_ingest(sources: List[str], corpus_path: Path = CORPUS_PATH) -> Path:
+def run_ingest(
+    sources: List[str],
+    corpus_path: Path = CORPUS_PATH,
+    download_video: bool = True,
+) -> Path:
     """
     Run the multi-source ingestion engine on the provided source list.
 
@@ -103,8 +107,8 @@ def run_ingest(sources: List[str], corpus_path: Path = CORPUS_PATH) -> Path:
     """
     from scripts.ingestion import run_ingestion
 
-    logger.info("Stage 1 — Ingestion starting (%d source(s))", len(sources))
-    corpus = run_ingestion(sources, output_corpus_path=corpus_path)
+    logger.info("Stage 1 — Ingestion starting (%d source(s), download_video=%s)", len(sources), download_video)
+    corpus = run_ingestion(sources, output_corpus_path=corpus_path, download_video=download_video)
     logger.info("Corpus written: %s (%d sources)", corpus_path, len(corpus.sources))
     return corpus_path
 
@@ -339,6 +343,7 @@ def run_full_pipeline(
     non_interactive: bool = False,
     preset: Optional[str] = None,
     skip_cleanup_prompt: bool = False,
+    download_video: bool = True,
 ) -> Dict[str, Any]:
     """
     Execute the complete thenuke pipeline end-to-end.
@@ -354,7 +359,7 @@ def run_full_pipeline(
     artifacts: Dict[str, Any] = {}
 
     # Stage 1
-    corpus_path = run_ingest(sources)
+    corpus_path = run_ingest(sources, download_video=download_video)
     artifacts["corpus"] = str(corpus_path)
 
     # Stage 2
@@ -405,6 +410,7 @@ def build_parser() -> argparse.ArgumentParser:
     # run — full pipeline
     run_p = sub.add_parser("run", help="Full pipeline: ingest → grill → synthesize → compile → qa")
     run_p.add_argument("sources", nargs="+", help="URLs or local file paths to ingest")
+    run_p.add_argument("--subtitles-only", action="store_true", help="Fast path: ingest subtitles only (2s), skip 720p video stream download")
     run_p.add_argument("--non-interactive", action="store_true", help="Skip interactive grilling; use preset")
     run_p.add_argument("--preset", default=None, help="Grilling preset name (e.g. senior_architect_faang)")
     run_p.add_argument("--skip-cleanup", action="store_true", help="Auto-wipe scratch without confirmation")
@@ -412,6 +418,7 @@ def build_parser() -> argparse.ArgumentParser:
     # ingest
     ingest_p = sub.add_parser("ingest", help="Run ingestion only")
     ingest_p.add_argument("sources", nargs="+", help="URLs or file paths")
+    ingest_p.add_argument("--subtitles-only", action="store_true", help="Fast path: ingest subtitles only (2s), skip 720p video stream download")
 
     # grill
     grill_p = sub.add_parser("grill", help="Run grilling protocol only")
@@ -466,12 +473,13 @@ def main() -> None:
             non_interactive=args.non_interactive,
             preset=args.preset,
             skip_cleanup_prompt=args.skip_cleanup,
+            download_video=not getattr(args, "subtitles_only", False),
         )
         print(json.dumps(result, indent=2))
         sys.exit(0 if result.get("status") == "COMPLETE" else 1)
 
     elif args.command == "ingest":
-        corpus = run_ingest(args.sources)
+        corpus = run_ingest(args.sources, download_video=not getattr(args, "subtitles_only", False))
         print(f"Corpus: {corpus}")
 
     elif args.command == "grill":

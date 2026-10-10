@@ -223,3 +223,39 @@ class TestIntegrationYouTubeIngestionWithSpecs:
             assert "function connect" in source.extracted_images[0].ocr_text
             assert len(source.extracted_code_blocks) >= 1
             assert source.extracted_code_blocks[0].code == "function connect() {\n  return db;\n}"
+
+    @patch("scripts.ingestion.yt_ingest.extract_video_metadata")
+    @patch("scripts.ingestion.yt_ingest.download_subtitles")
+    @patch("scripts.ingestion.yt_ingest.transcribe_audio_fallback")
+    @patch("scripts.ingestion.yt_ingest.download_youtube_video_720p")
+    def test_subtitles_present_strictly_skips_whisper_fallback(
+        self,
+        mock_dl_720p,
+        mock_whisper_fallback,
+        mock_subs,
+        mock_meta,
+    ):
+        mock_meta.return_value = {
+            "id": "vid_fast",
+            "title": "Subtitled Video",
+            "duration": 600,
+            "uploader": "Instructor",
+            "chapters": [],
+        }
+        with tempfile.TemporaryDirectory() as td:
+            sub_file = Path(td) / "vid_fast.hi.vtt"
+            sub_file.write_text("WEBVTT\n\n00:00:01.000 --> 00:00:05.000\nNamaste dosto git sikh rahe hain.\n")
+            mock_subs.return_value = sub_file
+
+            source = ingest_youtube_video(
+                "https://www.youtube.com/watch?v=vid_fast",
+                output_dir=td,
+                download_video=False,
+            )
+
+            # Whisper must NEVER be called when subtitles exist
+            assert not mock_whisper_fallback.called
+            # Video download must NEVER be called when download_video=False
+            assert not mock_dl_720p.called
+            assert source.metadata["subtitles_extracted"] is True
+            assert "Namaste dosto git sikh rahe hain" in source.chapters[0].text

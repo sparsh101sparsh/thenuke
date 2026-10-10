@@ -154,6 +154,21 @@ python thenuke_cli.py clean
 - **ZERO PDF Binaries in Git:** All `.gitignore` configurations enforce `*.pdf`, `output/`, and `scratch/`. PDFs are strictly local artifacts generated to `~/Downloads/` or `~/thenuke_workspace/output/`.
 - Repositories store 100% clean, reproducible source code, vector drawing engines, test suites, and documentation.
 
+### Ingestion Invariants & Honest Communication (Strict Operational Rule)
+- **Subtitles-First Priority (Fast Path):**
+  - Always attempt subtitle extraction first using `--skip-download` (`hi-orig,hi,en,en.*,hi.*`). Subtitles download in 1–2 seconds with zero video bandwidth consumption.
+  - **ABSOLUTE INVARIANT: NEVER invoke or mention Faster-Whisper when subtitles are available.** Whisper is strictly a fallback for videos with zero subtitle tracks. Mentioning Whisper or GPU overhead when captions were already available is a critical failure mode.
+- **Explicit Ingestion Modes:**
+  - `Fast Path` (`--subtitles-only`): 2-second subtitle ingestion. Ideal when narrative transcript + native ReportLab vector diagrams are sufficient.
+  - `Full Visual Path` (`--download-video`): Downloads 720p MP4 and extracts scene-change frames via ffmpeg for OCR and visual inclusion.
+- **Zero-Pretense / Zero-Fluff Communication Policy:**
+  - If a video is long (> 30 minutes, > 500 MB) and video downloading will take time:
+    - State the reality to the user immediately in plain language:
+      *"Subtitles downloaded in 2 seconds. Video is 140 min (~1.4 GB). Downloading video stream in background for visual frame extraction..."*
+    - **NEVER silently kill a video download and pretend that visual frame analysis was done.**
+    - If a download or command is cancelled or skipped due to size/timeout, state it plainly to the user in one sentence without deflection or technical jargon.
+    - NEVER make up excuses or claim that frame-by-frame analysis occurred when frames were not extracted.
+
 ## Grilling Presets
 
 | Preset | Level | Visual | Audience |

@@ -73,7 +73,8 @@ Modern technical documentation generation suffers from a fundamental impedance m
 | **Multi-Source Ingestion** | YouTube (720p), Web Documentation, GitHub, PDFs, PPTX, Local Video/Audio, Screenshots | Single unified corpus (`nuke_ingestion_corpus.json`) regardless of input format |
 | **Strict 720p Video Pipeline** | `yt-dlp -f "bestvideo[height<=720]+bestaudio/best[height<=720]"` | Prevents 4K bandwidth saturation while retaining full text sharpness on 1080p slide recordings |
 | **Dynamic Frame Sampling** | Scene-change detection heuristic based on duration: $R = \max(0.05, \min(0.5, \frac{180}{T}))$ | Captures blackboard writing, code diffs, and slide transitions without duplicate frame bloat |
-| **Whisper Audio Fallback** | `faster-whisper` (`large-v3-turbo`) producing timestamped `.srt` files | Zero reliance on flaky auto-captions; handles multi-lingual audio transcripts seamlessly |
+| **Subtitles-First & Whisper Fallback** | Instant VTT/SRT extraction (2s); Whisper `large-v3-turbo` strictly as fallback for 0-sub videos | Prioritizes official captions instantaneously; zero Whisper overhead when captions are available |
+| **Dual Ingestion Paths** | Fast Path (`--subtitles-only`) vs Full Visual Path (`--download-video`) | Flexible control between instant 2s ingestion and comprehensive multi-GB frame extraction |
 | **VTT Rolling Deduplication** | 3-line rolling-window deduplication with timestamp window merging | Cleans progressive word-by-word YouTube captions into continuous, readable paragraphs |
 | **Scope Grilling Protocol** | Interactive multi-tier interview generating validated `grilling_profile.json` | Locks level-of-detail (Foundations, Parity, Senior Architect) and visual density before synthesis |
 | **Talking-Head Rejection** | Multi-signal heuristic with word-boundary regex filtering (`\bface\b`) | Rejects talking-head camera frames; strictly includes technical architectural diagrams |

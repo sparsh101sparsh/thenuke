@@ -774,8 +774,13 @@ def ingest_youtube_video(
             raw_cues = parse_vtt_cues(content)
             cues = deduplicate_vtt_cues(raw_cues)
             full_transcript = clean_vtt_content(content)
+            logger.info(
+                f"[Ingestion: Fast Path] Subtitles acquired successfully for {url} "
+                f"({len(cues)} cues, {len(full_transcript.split())} words). "
+                f"Faster-Whisper audio transcription strictly skipped because official captions exist."
+            )
         else:
-            # 3. Fallback: ffmpeg + whisper-cli if available
+            # 3. Fallback: ONLY when no subtitle tracks exist at all
             logger.info(f"No subtitle tracks found for {url}. Attempting whisper-cli fallback...")
             try:
                 # Get direct audio stream URL with yt-dlp
@@ -871,8 +876,11 @@ def ingest_youtube_video(
 
         if download_video:
             video_dir = work_dir / "video"
+            logger.info(f"Downloading 720p stream for {url} (Duration: {duration:.1f}s)...")
             video_path = download_youtube_video_720p(url, video_dir, yt_dlp_bin=yt_dlp_bin)
             if video_path and video_path.exists():
+                file_mb = video_path.stat().st_size / (1024 * 1024)
+                logger.info(f"Video downloaded: {video_path.name} ({file_mb:.1f} MB). Extracting visual frames...")
                 frames_dir = work_dir / "frames"
                 frames = extract_high_density_frames(
                     video_path,
@@ -892,6 +900,11 @@ def ingest_youtube_video(
                         caption = f"Video frame {f_idx + 1} ({f_path.name})"
                         extracted_images.append(ExtractedImage(path=str(f_path), caption=caption, ocr_text=ocr_txt))
                         extracted_code_blocks.extend(c_blocks)
+                logger.info(f"Extracted {len(frames)} frames, {len(extracted_images)} key visual blocks with OCR.")
+            else:
+                logger.warning(f"Video stream download did not produce a valid file for {url}. Visual frames skipped.")
+        else:
+            logger.info(f"[Ingestion: Fast Path] Video download skipped by policy (download_video=False).")
 
         # 6. Build IngestionSource
         source = IngestionSource(

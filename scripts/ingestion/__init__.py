@@ -57,6 +57,7 @@ def run_ingestion(
     sources: List[str],
     output_corpus_path: Optional[str | Path] = "nuke_ingestion_corpus.json",
     assets_dir: Optional[str | Path] = "assets",
+    download_video: bool = True,
 ) -> UnifiedCorpus:
     """Unified ingestion pipeline runner.
     
@@ -76,8 +77,12 @@ def run_ingestion(
         try:
             # 1. YouTube URLs
             if is_youtube_url(src):
-                logger.info(f"Ingesting YouTube source: {src}")
-                yt_sources = ingest_youtube_url(src, output_dir=assets_path)
+                logger.info(f"Ingesting YouTube source: {src} (download_video={download_video})")
+                yt_sources = ingest_youtube_url(
+                    src,
+                    output_dir=assets_path,
+                    download_video=download_video,
+                )
                 for s in yt_sources:
                     corpus.add_source(s)
                 continue
