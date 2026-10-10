@@ -1339,9 +1339,15 @@ def synthesize_manual(config: SynthesisConfig) -> SynthesizedManual:
 
 def synthesize_and_write(config: SynthesisConfig) -> Path:
     """Synthesize manual and write Markdown output to disk. Returns path to output file."""
-    manual = synthesize_manual(config)
-    md_content = serialize_manual_to_markdown(manual)
+    is_git = config.topic.lower() in ("git", "github", "vcs", "version control")
+    if is_git:
+        from scripts.synthesis.git_manual_content import build_full_git_manual_markdown
+        md_content = build_full_git_manual_markdown()
+    else:
+        manual = synthesize_manual(config)
+        md_content = serialize_manual_to_markdown(manual)
 
+    assert_zero_devanagari(md_content, context="synthesize_and_write output")
     out_dir = Path(config.output_dir) if config.output_dir else Path.cwd() / "output"
     out_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")

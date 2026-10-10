@@ -785,5 +785,16 @@ def build_branded_pdf(
     output_path: str | Path,
     branding: str = "Prepared by @issparsh @sumitsingh097",
 ) -> Path:
-    """Top-level entry point: compile Markdown -> branded PDF."""
-    return compile_markdown_to_pdf(markdown_text, output_path, branding=branding)
+    """Top-level entry point: compile Markdown -> publication-grade branded PDF via ReportLab."""
+    try:
+        from scripts.diagramming.reportlab_engine import ReferenceManualBuilder
+        # Detect topic if in header
+        topic = "Git"
+        first_line = markdown_text.splitlines()[0] if markdown_text else ""
+        if "# " in first_line and ":" in first_line:
+            topic = first_line.split("# ")[1].split(":")[0].strip()
+        builder = ReferenceManualBuilder(output_path, topic=topic)
+        return builder.compile(markdown_text)
+    except Exception as e:
+        logger.warning("ReportLab engine compilation encountered error: %s. Falling back to PyMuPDF compiler.", e)
+        return compile_markdown_to_pdf(markdown_text, output_path, branding=branding)

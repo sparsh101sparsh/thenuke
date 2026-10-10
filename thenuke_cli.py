@@ -126,27 +126,51 @@ def run_grill(
     preset unless `preset` specifies otherwise.
     """
     from scripts.grilling.grilling_engine import (
-        run_grilling_session,
-        PRESET_PROFILES,
+        run_grilling_interview,
         GrillingProfile,
     )
 
     logger.info("Stage 2 — Grilling Protocol starting")
-    corpus_data = _load_json(corpus_path)
+    corpus_data = _load_json(corpus_path) if corpus_path.exists() else {}
 
-    if non_interactive or preset:
-        profile_name = preset or "senior_architect_faang"
-        profile = PRESET_PROFILES.get(profile_name)
-        if profile is None:
-            valid = ", ".join(PRESET_PROFILES.keys())
-            raise ValueError(f"Unknown preset '{profile_name}'. Valid: {valid}")
-        logger.info("Non-interactive mode: applying preset '%s'", profile_name)
-    else:
-        profile = run_grilling_session(corpus_data)
+    # Extract detected topic from corpus if available
+    detected_topic = "JavaScript"
+    sources_list = corpus_data.get("sources", [])
+    if sources_list:
+        first_title = sources_list[0].get("title", "")
+        if "git" in first_title.lower():
+            detected_topic = "Git"
+        elif "python" in first_title.lower():
+            detected_topic = "Python"
 
-    profile_path.parent.mkdir(parents=True, exist_ok=True)
-    _save_json(profile_path, asdict(profile) if hasattr(profile, "__dataclass_fields__") else profile.__dict__)
-    logger.info("Grilling profile written: %s", profile_path)
+    lod = "senior_architect"
+    vit = "strict_need_based"
+    focus = "faang_interview"
+
+    if preset == "foundations":
+        lod = "foundations"
+        focus = "academic_foundations"
+    elif preset == "resource_parity":
+        lod = "resource_parity"
+        focus = "production_engineering"
+        vit = "balanced"
+    elif preset and "architect" in preset:
+        lod = "senior_architect"
+        focus = "faang_interview"
+
+    profile = run_grilling_interview(
+        corpus=corpus_data if corpus_path.exists() else None,
+        output_path=profile_path,
+        interactive=not non_interactive and preset is None,
+        level_of_detail=lod,
+        visual_inclusion_threshold=vit,
+        audience_focus=focus,
+    )
+
+    profile_dict = profile.to_dict()
+    profile_dict["topic"] = detected_topic
+    _save_json(profile_path, profile_dict)
+    logger.info("Grilling profile written: %s (topic=%s)", profile_path, detected_topic)
     return profile_path
 
 

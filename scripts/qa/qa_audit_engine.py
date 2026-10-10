@@ -36,12 +36,12 @@ _SYLLABUS_SIGNAL_RE = re.compile(
 )
 
 _PHASE_HEADER_RE = re.compile(
-    r"PHASE\s+\d+\s*:?\s*[A-Z]",
+    r"PHASE\s+\d+\s*[:—\-]\s*[A-Z]",
     re.IGNORECASE,
 )
 
 _CHALLENGE_BLOCK_RE = re.compile(
-    r"Challenge\s+[123]\s*:",
+    r"(?:CHALLENGE\s+\d+(?:\.\d+)?|Challenge\s+[123]\s*:)",
     re.IGNORECASE,
 )
 
