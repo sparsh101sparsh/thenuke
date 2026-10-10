@@ -1042,6 +1042,271 @@ def create_thermal_circadian_diagram() -> Drawing:
 
 
 # ---------------------------------------------------------------------------
+# 15. Prefrontal-Hippocampal Neuroplastic Axis Diagram
+# ---------------------------------------------------------------------------
+def create_pfc_hippocampal_axis_diagram() -> Drawing:
+    """Renders the Prefrontal-Hippocampal Neuroplastic Axis Diagram."""
+    height = 155.0
+    d, g = _make_canvas_frame(
+        height,
+        "Figure 1.1: Prefrontal-Hippocampal Neuroplastic Axis",
+        "Dual Anatomical Targets of Exercise-Induced Transformation",
+    )
+
+    y_box = 32.0
+    box_w = 205.0
+    box_h = 85.0
+
+    # Box 1: Prefrontal Cortex (Left)
+    g.add(Rect(15, y_box, box_w, box_h, rx=3, ry=3, fillColor=COLOR_BG_LIGHT, strokeColor=COLOR_BLACK, strokeWidth=1.0))
+    g.add(String(25, y_box + 70, "PREFRONTAL CORTEX (PFC)", fontName="Helvetica-Bold", fontSize=8.0, fillColor=COLOR_BLACK))
+    g.add(String(25, y_box + 58, "Anterior Frontal Pole • Executive Center", fontName="Helvetica-Oblique", fontSize=6.5, fillColor=COLOR_MUTED))
+    g.add(Line(25, y_box + 52, 210, y_box + 52, strokeColor=COLOR_HAIRLINE, strokeWidth=0.5))
+    g.add(String(25, y_box + 40, "• Attentional focus & task switching (+2h window)", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(25, y_box + 29, "• Working memory & strategic decision-making", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(25, y_box + 18, "• dlPFC synaptic arborization via aerobic exercise", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(25, y_box + 7, "• High vulnerability to aging & frontotemporal loss", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+
+    # Box 2: Hippocampus (Right)
+    g.add(Rect(255, y_box, box_w, box_h, rx=3, ry=3, fillColor=COLOR_BG_LIGHT, strokeColor=COLOR_BLACK, strokeWidth=1.0))
+    g.add(String(265, y_box + 70, "HIPPOCAMPUS (TEMPORAL LOBE)", fontName="Helvetica-Bold", fontSize=8.0, fillColor=COLOR_BLACK))
+    g.add(String(265, y_box + 58, "Medial Temporal Lobe • Declarative Memory Hub", fontName="Helvetica-Oblique", fontSize=6.5, fillColor=COLOR_MUTED))
+    g.add(Line(265, y_box + 52, 450, y_box + 52, strokeColor=COLOR_HAIRLINE, strokeWidth=0.5))
+    g.add(String(265, y_box + 40, "• Long-term episodic & semantic memory retention", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(265, y_box + 29, "• Adult Neurogenesis: Dentate Gyrus new neurons", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(265, y_box + 18, "• +2% Volumetric increase (Erickson et al., PNAS)", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(265, y_box + 7, "• Prime target of Alzheimer's beta-amyloid & tau", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+
+    # Bi-directional communication arrow between boxes
+    _draw_arrow(g, 222, y_box + 48, 248, y_box + 48, color=COLOR_BLACK, stroke_width=1.2, head_len=4, head_width=3)
+    _draw_arrow(g, 248, y_box + 38, 222, y_box + 38, color=COLOR_BLACK, stroke_width=1.2, head_len=4, head_width=3)
+    g.add(String(224, y_box + 28, "SYNAPTO-", fontName="Courier-Bold", fontSize=5.0, fillColor=COLOR_BLACK))
+    g.add(String(226, y_box + 20, "GENESIS", fontName="Courier-Bold", fontSize=5.0, fillColor=COLOR_BLACK))
+
+    g.add(String(20, 12, "ANATOMICAL INVARIANT: The two structures most vulnerable to age-related neurodegeneration are the most neuroplastic under exercise.", fontName="Helvetica-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+    return d
+
+
+# ---------------------------------------------------------------------------
+# 16. Acute Exercise Neurochemical Cascade Diagram
+# ---------------------------------------------------------------------------
+def create_neurochemical_surge_diagram() -> Drawing:
+    """Renders the Acute Exercise Neurochemical Cascade Diagram."""
+    height = 150.0
+    d, g = _make_canvas_frame(
+        height,
+        "Figure 2.1: Acute Exercise Neurochemical Cascade",
+        "Immediate Monoaminergic Surges & 2-Hour Focus Window",
+    )
+
+    y_base = 30.0
+
+    # Left Track: 3 Neurotransmitter Gauges
+    # Gauge 1: Dopamine
+    g.add(String(15, y_base + 82, "DOPAMINE (DA)", fontName="Helvetica-Bold", fontSize=7.0, fillColor=COLOR_BLACK))
+    g.add(String(15, y_base + 73, "VTA / Striatal Motor Drive", fontName="Helvetica", fontSize=5.5, fillColor=COLOR_MUTED))
+    g.add(Rect(125, y_base + 75, 110, 10, fillColor=COLOR_BG_SHADED, strokeColor=COLOR_HAIRLINE, strokeWidth=0.5))
+    g.add(Rect(125, y_base + 75, 88, 10, fillColor=COLOR_BLACK, strokeColor=COLOR_BLACK, strokeWidth=0.5))
+    g.add(String(218, y_base + 77, "+180%", fontName="Courier-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+
+    # Gauge 2: Serotonin
+    g.add(String(15, y_base + 55, "SEROTONIN (5-HT)", fontName="Helvetica-Bold", fontSize=7.0, fillColor=COLOR_BLACK))
+    g.add(String(15, y_base + 46, "Dorsal Raphe Mood Stability", fontName="Helvetica", fontSize=5.5, fillColor=COLOR_MUTED))
+    g.add(Rect(125, y_base + 48, 110, 10, fillColor=COLOR_BG_SHADED, strokeColor=COLOR_HAIRLINE, strokeWidth=0.5))
+    g.add(Rect(125, y_base + 48, 75, 10, fillColor=COLOR_CHARCOAL, strokeColor=COLOR_CHARCOAL, strokeWidth=0.5))
+    g.add(String(205, y_base + 50, "+150%", fontName="Courier-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+
+    # Gauge 3: Noradrenaline
+    g.add(String(15, y_base + 28, "NORADRENALINE (NE)", fontName="Helvetica-Bold", fontSize=7.0, fillColor=COLOR_BLACK))
+    g.add(String(15, y_base + 19, "Locus Coeruleus Alertness", fontName="Helvetica", fontSize=5.5, fillColor=COLOR_MUTED))
+    g.add(Rect(125, y_base + 21, 110, 10, fillColor=COLOR_BG_SHADED, strokeColor=COLOR_HAIRLINE, strokeWidth=0.5))
+    g.add(Rect(125, y_base + 21, 95, 10, fillColor=COLOR_BLACK, strokeColor=COLOR_BLACK, strokeWidth=0.5))
+    g.add(String(224, y_base + 23, "+200%", fontName="Courier-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+
+    # Right Box: 2-Hour Cognitive Window Timeline
+    g.add(Rect(260, y_base + 12, 205, 85, rx=3, ry=3, fillColor=COLOR_BG_LIGHT, strokeColor=COLOR_BLACK, strokeWidth=1.0))
+    g.add(String(270, y_base + 82, "POST-WORKOUT COGNITIVE WINDOW", fontName="Helvetica-Bold", fontSize=7.5, fillColor=COLOR_BLACK))
+    g.add(Line(270, y_base + 76, 455, y_base + 76, strokeColor=COLOR_HAIRLINE, strokeWidth=0.5))
+
+    g.add(String(270, y_base + 64, "• T = 0-15m: Acute monoamine surge & euphoria", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(270, y_base + 52, "• T = 15m-2h: Attentional focus window (Suzuki Lab)", fontName="Helvetica-Bold", fontSize=6.0, fillColor=COLOR_BLACK))
+    g.add(String(270, y_base + 40, "• Stroop task reaction time significantly accelerated", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(270, y_base + 28, "• Prefrontal executive tasks & grant-writing optimum", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(270, y_base + 16, "• Transient surge bridges to chronic baseline lift", fontName="Helvetica-Oblique", fontSize=6.0, fillColor=COLOR_MUTED))
+
+    g.add(String(20, 10, "ACUTE MECHANISM INVARIANT: A single workout primes monoamines, opening a proven minimum 2-hour high-efficiency attentional focus window.", fontName="Helvetica-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+    return d
+
+
+# ---------------------------------------------------------------------------
+# 17. Muscle-Brain Molecular Neurogenesis Cascade Diagram
+# ---------------------------------------------------------------------------
+def create_bdnf_neurogenesis_diagram() -> Drawing:
+    """Renders the Muscle-Brain Molecular Neurogenesis Cascade Diagram."""
+    height = 150.0
+    d, g = _make_canvas_frame(
+        height,
+        "Figure 3.1: Muscle-Brain Molecular Neurogenesis Cascade",
+        "Skeletal Myokines & Hippocampal Dentate Gyrus Cell Genesis",
+    )
+
+    y_box = 32.0
+    b_w = 98.0
+    b_h = 80.0
+
+    # Step 1: Muscle Contraction
+    g.add(Rect(12, y_box, b_w, b_h, rx=2, ry=2, fillColor=COLOR_BG_LIGHT, strokeColor=COLOR_BLACK, strokeWidth=0.8))
+    g.add(String(18, y_box + 68, "1. SKELETAL MUSCLE", fontName="Helvetica-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+    g.add(Line(18, y_box + 63, 104, y_box + 63, strokeColor=COLOR_HAIRLINE, strokeWidth=0.5))
+    g.add(String(18, y_box + 50, "Aerobic contractions", fontName="Helvetica", fontSize=5.5, fillColor=COLOR_CHARCOAL))
+    g.add(String(18, y_box + 40, "synthesize myokines:", fontName="Helvetica", fontSize=5.5, fillColor=COLOR_CHARCOAL))
+    g.add(String(18, y_box + 28, "• Cathepsin B (CTSB)", fontName="Courier-Bold", fontSize=5.5, fillColor=COLOR_BLACK))
+    g.add(String(18, y_box + 16, "• Irisin (FNDC5)", fontName="Courier-Bold", fontSize=5.5, fillColor=COLOR_BLACK))
+
+    _draw_arrow(g, 112, y_box + 40, 126, y_box + 40, color=COLOR_BLACK, stroke_width=1.0, head_len=4, head_width=3)
+
+    # Step 2: Blood-Brain Barrier & Angiogenesis
+    g.add(Rect(128, y_box, b_w, b_h, rx=2, ry=2, fillColor=COLOR_BG_LIGHT, strokeColor=COLOR_BLACK, strokeWidth=0.8))
+    g.add(String(134, y_box + 68, "2. BBB & VASCULATURE", fontName="Helvetica-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+    g.add(Line(134, y_box + 63, 220, y_box + 63, strokeColor=COLOR_HAIRLINE, strokeWidth=0.5))
+    g.add(String(134, y_box + 50, "Circulating myokines", fontName="Helvetica", fontSize=5.5, fillColor=COLOR_CHARCOAL))
+    g.add(String(134, y_box + 40, "cross BBB into brain;", fontName="Helvetica", fontSize=5.5, fillColor=COLOR_CHARCOAL))
+    g.add(String(134, y_box + 28, "stimulate VEGF capillary", fontName="Helvetica", fontSize=5.5, fillColor=COLOR_CHARCOAL))
+    g.add(String(134, y_box + 16, "cerebral angiogenesis", fontName="Courier", fontSize=5.5, fillColor=COLOR_BLACK))
+
+    _draw_arrow(g, 228, y_box + 40, 242, y_box + 40, color=COLOR_BLACK, stroke_width=1.0, head_len=4, head_width=3)
+
+    # Step 3: BDNF Synthesis & TrkB Activation
+    g.add(Rect(244, y_box, b_w, b_h, rx=2, ry=2, fillColor=COLOR_BG_LIGHT, strokeColor=COLOR_BLACK, strokeWidth=0.8))
+    g.add(String(250, y_box + 68, "3. BDNF CASCADE", fontName="Helvetica-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+    g.add(Line(250, y_box + 63, 336, y_box + 63, strokeColor=COLOR_HAIRLINE, strokeWidth=0.5))
+    g.add(String(250, y_box + 50, "Hippocampus up-regulates", fontName="Helvetica", fontSize=5.5, fillColor=COLOR_CHARCOAL))
+    g.add(String(250, y_box + 40, "BDNF expression;", fontName="Helvetica", fontSize=5.5, fillColor=COLOR_CHARCOAL))
+    g.add(String(250, y_box + 28, "binds TrkB receptors", fontName="Courier-Bold", fontSize=5.5, fillColor=COLOR_BLACK))
+    g.add(String(250, y_box + 16, "-> MAPK/ERK signaling", fontName="Courier", fontSize=5.5, fillColor=COLOR_CHARCOAL))
+
+    _draw_arrow(g, 344, y_box + 40, 358, y_box + 40, color=COLOR_BLACK, stroke_width=1.0, head_len=4, head_width=3)
+
+    # Step 4: Adult Neurogenesis
+    g.add(Rect(360, y_box, b_w, b_h, rx=2, ry=2, fillColor=COLOR_BG_LIGHT, strokeColor=COLOR_BLACK, strokeWidth=0.8))
+    g.add(String(366, y_box + 68, "4. NEUROGENESIS", fontName="Helvetica-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+    g.add(Line(366, y_box + 63, 452, y_box + 63, strokeColor=COLOR_HAIRLINE, strokeWidth=0.5))
+    g.add(String(366, y_box + 50, "Dentate Gyrus (DG)", fontName="Helvetica-Bold", fontSize=5.5, fillColor=COLOR_BLACK))
+    g.add(String(366, y_box + 40, "generates brand-new", fontName="Helvetica", fontSize=5.5, fillColor=COLOR_CHARCOAL))
+    g.add(String(366, y_box + 28, "granule neurons;", fontName="Helvetica", fontSize=5.5, fillColor=COLOR_CHARCOAL))
+    g.add(String(366, y_box + 16, "functional integration", fontName="Helvetica-Oblique", fontSize=5.5, fillColor=COLOR_CHARCOAL))
+
+    g.add(String(20, 11, "MOLECULAR INVARIANT: Skeletal muscle is an endocrine organ; contracting muscle directly triggers de novo neurogenesis in the hippocampus.", fontName="Helvetica-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+    return d
+
+
+# ---------------------------------------------------------------------------
+# 18. Cognitive Reserve Buffer Diagram
+# ---------------------------------------------------------------------------
+def create_cognitive_reserve_diagram() -> Drawing:
+    """Renders the Cognitive Reserve Buffer Diagram."""
+    height = 155.0
+    d, g = _make_canvas_frame(
+        height,
+        "Figure 4.1: The Brain 401(k) Cognitive Reserve Shield",
+        "Aging Trajectory: Sedentary Decline vs. Exercise-Protected Longevity",
+    )
+
+    y_base = 32.0
+
+    # Axes
+    g.add(Line(40, y_base, 450, y_base, strokeColor=COLOR_BLACK, strokeWidth=1.0))
+    g.add(Line(40, y_base, 40, y_base + 95, strokeColor=COLOR_BLACK, strokeWidth=1.0))
+    g.add(String(45, y_base - 10, "Age 20", fontName="Courier", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(145, y_base - 10, "Age 40", fontName="Courier", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(245, y_base - 10, "Age 60", fontName="Courier", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(345, y_base - 10, "Age 75", fontName="Courier", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(425, y_base - 10, "Age 90", fontName="Courier", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+
+    g.add(String(10, y_base + 90, "100%", fontName="Courier", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(18, y_base + 38, "Dementia Threshold", fontName="Helvetica-Bold", fontSize=5.0, fillColor=COLOR_CHARCOAL))
+
+    # Horizontal Threshold Line (Dementia / Clinical Impairment)
+    g.add(Line(40, y_base + 35, 450, y_base + 35, strokeColor=COLOR_MUTED, strokeWidth=1.0, strokeDashArray=[3, 3]))
+
+    # Curve A: Sedentary Decline (crosses threshold around age 68)
+    sed_pts = [
+        (40, y_base + 85), (145, y_base + 75), (245, y_base + 55),
+        (290, y_base + 35), (345, y_base + 20), (425, y_base + 8)
+    ]
+    for idx in range(len(sed_pts) - 1):
+        g.add(Line(sed_pts[idx][0], sed_pts[idx][1], sed_pts[idx+1][0], sed_pts[idx+1][1], strokeColor=COLOR_MUTED, strokeWidth=1.5))
+    g.add(String(295, y_base + 22, "Sedentary Trajectory (Crosses threshold ~age 68)", fontName="Helvetica-Oblique", fontSize=6.0, fillColor=COLOR_MUTED))
+
+    # Curve B: Exercise Protected Trajectory (Stays above threshold)
+    ex_pts = [
+        (40, y_base + 90), (145, y_base + 88), (245, y_base + 78),
+        (345, y_base + 62), (425, y_base + 45)
+    ]
+    for idx in range(len(ex_pts) - 1):
+        g.add(Line(ex_pts[idx][0], ex_pts[idx][1], ex_pts[idx+1][0], ex_pts[idx+1][1], strokeColor=COLOR_BLACK, strokeWidth=2.0))
+    g.add(String(150, y_base + 92, "Exercise-Protected Trajectory (Maintains Functional Reserve)", fontName="Helvetica-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+
+    # Shaded Cognitive Reserve Surplus Box
+    g.add(Rect(260, y_base + 42, 185, 22, fillColor=COLOR_BG_SHADED, strokeColor=COLOR_HAIRLINE, strokeWidth=0.5))
+    g.add(String(268, y_base + 53, "BRAIN 401(k) RESERVE BUFFER", fontName="Courier-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+    g.add(String(268, y_base + 45, "Delays clinical symptom manifestation by 10-15+ years", fontName="Helvetica", fontSize=5.0, fillColor=COLOR_CHARCOAL))
+
+    g.add(String(20, 10, "LONGEVITY INVARIANT: Exercise does not cure dementia; it builds structural reserve, keeping hippocampal volume above the clinical threshold.", fontName="Helvetica-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+    return d
+
+
+# ---------------------------------------------------------------------------
+# 19. Exercise Dosage & Cognitive ROI Matrix Diagram
+# ---------------------------------------------------------------------------
+def create_exercise_dosage_diagram() -> Drawing:
+    """Renders the Exercise Dosage & Cognitive ROI Matrix Diagram."""
+    height = 150.0
+    d, g = _make_canvas_frame(
+        height,
+        "Figure 5.1: Empirical Exercise Prescription & Cognitive ROI",
+        "Clinical Minimum Effective Dose vs. Daily Micro-Movements",
+    )
+
+    y_box = 30.0
+    card_w = 140.0
+    card_h = 86.0
+
+    # Card 1: Minimum Effective Dose (MED)
+    g.add(Rect(12, y_box, card_w, card_h, rx=3, ry=3, fillColor=COLOR_BG_LIGHT, strokeColor=COLOR_BLACK, strokeWidth=1.0))
+    g.add(String(20, y_box + 72, "1. MINIMUM DOSE (MED)", fontName="Helvetica-Bold", fontSize=7.0, fillColor=COLOR_BLACK))
+    g.add(Line(20, y_box + 67, 144, y_box + 67, strokeColor=COLOR_HAIRLINE, strokeWidth=0.5))
+    g.add(String(20, y_box + 54, "• Frequency: 3-4x / week", fontName="Helvetica-Bold", fontSize=6.0, fillColor=COLOR_BLACK))
+    g.add(String(20, y_box + 42, "• Duration: 30 mins / session", fontName="Helvetica-Bold", fontSize=6.0, fillColor=COLOR_BLACK))
+    g.add(String(20, y_box + 30, "• Modality: Aerobic cardio", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(20, y_box + 18, "• Target: Heart rate elevation", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(20, y_box + 7, "  (Zone 2 / Zone 3 aerobic)", fontName="Helvetica-Oblique", fontSize=5.5, fillColor=COLOR_MUTED))
+
+    # Card 2: Daily NEAT Micro-Movement
+    g.add(Rect(167, y_box, card_w, card_h, rx=3, ry=3, fillColor=COLOR_BG_LIGHT, strokeColor=COLOR_BLACK, strokeWidth=1.0))
+    g.add(String(175, y_box + 72, "2. DAILY MICRO-HABITS", fontName="Helvetica-Bold", fontSize=7.0, fillColor=COLOR_BLACK))
+    g.add(Line(175, y_box + 67, 299, y_box + 67, strokeColor=COLOR_HAIRLINE, strokeWidth=0.5))
+    g.add(String(175, y_box + 54, "• Take stairs over elevator", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(175, y_box + 42, "• Power-walk block breaks", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(175, y_box + 30, "• Brisk domestic aerobics:", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(175, y_box + 18, "  'Power-vacuuming' tempo", fontName="Helvetica-Oblique", fontSize=5.5, fillColor=COLOR_MUTED))
+    g.add(String(175, y_box + 7, "• Zero gym membership needed", fontName="Helvetica-Bold", fontSize=6.0, fillColor=COLOR_BLACK))
+
+    # Card 3: Neuroplastic ROI Timeline
+    g.add(Rect(322, y_box, card_w, card_h, rx=3, ry=3, fillColor=COLOR_BG_LIGHT, strokeColor=COLOR_BLACK, strokeWidth=1.0))
+    g.add(String(330, y_box + 72, "3. NEUROLOGICAL ROI", fontName="Helvetica-Bold", fontSize=7.0, fillColor=COLOR_BLACK))
+    g.add(Line(330, y_box + 67, 454, y_box + 67, strokeColor=COLOR_HAIRLINE, strokeWidth=0.5))
+    g.add(String(330, y_box + 54, "• Immediate: 2h focus boost", fontName="Courier-Bold", fontSize=5.5, fillColor=COLOR_BLACK))
+    g.add(String(330, y_box + 42, "• 6-12 Wks: Elevated BDNF", fontName="Courier", fontSize=5.5, fillColor=COLOR_CHARCOAL))
+    g.add(String(330, y_box + 30, "• 6 Mos: Stroop speed +35%", fontName="Courier", fontSize=5.5, fillColor=COLOR_CHARCOAL))
+    g.add(String(330, y_box + 18, "• 1 Yr: +2% Hippocampus vol", fontName="Courier-Bold", fontSize=5.5, fillColor=COLOR_BLACK))
+    g.add(String(330, y_box + 7, "• Lifetime: Dementia buffer", fontName="Courier", fontSize=5.5, fillColor=COLOR_CHARCOAL))
+
+    g.add(String(20, 10, "PRACTICAL INVARIANT: No elite athleticism required; 3-4x weekly 30-minute moderate aerobic sessions trigger maximum neuroplastic adaptation.", fontName="Helvetica-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+    return d
+
+
+# ---------------------------------------------------------------------------
 # Registry Map
 # ---------------------------------------------------------------------------
 DIAGRAM_REGISTRY = {
@@ -1059,6 +1324,14 @@ DIAGRAM_REGISTRY = {
     "adenosine_caffeine": create_adenosine_caffeine_diagram,
     "immune_killer_cells": create_immune_killer_cells_diagram,
     "thermal_circadian": create_thermal_circadian_diagram,
+    "pfc_hippocampal_axis": create_pfc_hippocampal_axis_diagram,
+    "neurochemical_surge": create_neurochemical_surge_diagram,
+    "bdnf_neurogenesis": create_bdnf_neurogenesis_diagram,
+    "bdnf_neurogenesis_cascade": create_bdnf_neurogenesis_diagram,
+    "cognitive_reserve": create_cognitive_reserve_diagram,
+    "cognitive_reserve_buffer": create_cognitive_reserve_diagram,
+    "exercise_dosage": create_exercise_dosage_diagram,
+    "exercise_dosage_matrix": create_exercise_dosage_diagram,
 }
 
 

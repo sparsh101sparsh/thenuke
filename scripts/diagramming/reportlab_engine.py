@@ -614,7 +614,11 @@ class ReferenceManualBuilder:
                     "Sleep is the single most effective thing we can do to reset our brain and body health each day.",
                     "Dr. Matthew Walker"
                 )
-                custom_q = sleep_quote if "SLEEP" in topic_name.upper() else None
+                exercise_quote = (
+                    "Exercise is the most transformative thing that you can do for your brain today. It is a supercharged 401(k) for your brain — and it's completely free.",
+                    "Dr. Wendy Suzuki"
+                )
+                custom_q = sleep_quote if "SLEEP" in topic_name.upper() else (exercise_quote if ("EXERCISE" in topic_name.upper() or "BRAIN" in topic_name.upper()) else None)
                 story.extend(self.build_cover_page(topic_name, num_phases=detected_phases, num_drills=detected_drills, custom_quote=custom_q))
                 i += 1
                 # Skip cover subtitle, branding, and dividers so they don't leak onto Page 2
@@ -623,12 +627,13 @@ class ReferenceManualBuilder:
                 continue
 
             # Syllabus Index detection
-            if "DETAILED SYLLABUS & TABLE OF CONTENTS" in line:
+            if "DETAILED SYLLABUS" in line.upper():
                 if in_syllabus:
                     # Next Part of syllabus (e.g., PART II to VI) gets fresh page
                     safe_page_break()
                 in_syllabus = True
-                story.append(Paragraph(line.strip("=").strip(), self.styles["TOCHeader"]))
+                clean_title = re.sub(r"^#+\s*", "", line.strip("=").strip())
+                story.append(Paragraph(clean_title, self.styles["TOCHeader"]))
                 story.append(HRFlowable(width="100%", thickness=1.0, color=COLOR_BLACK, spaceBefore=4, spaceAfter=6))
                 i += 1
                 continue
@@ -641,7 +646,7 @@ class ReferenceManualBuilder:
                 continue
 
             if in_syllabus:
-                if line.startswith("PHASE ") or re.match(r"^(?:PART|Phase)\s+\d+", line):
+                if line.startswith("PHASE ") or re.match(r"^(?:PART|Phase)\s+[IVXLCDM\d]+", line, re.IGNORECASE):
                     story.append(Paragraph(line.strip(), self.styles["TOCPhase"]))
                 elif line.startswith("Topics:"):
                     story.append(Paragraph(line.strip(), self.styles["TOCSub"]))
