@@ -71,49 +71,53 @@ def latex_to_reportlab_html(tex: str) -> str:
     if not t:
         return ""
 
-    # Fractions: \frac{num}{den} -> (num / den)
+    # Escape XML characters in raw LaTeX first
+    t = t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    # Fractions and square roots
     for _ in range(3):
         t = re.sub(r"\\frac\{([^{}]+)\}\{([^{}]+)\}", r"(\1 / \2)", t)
-        t = re.sub(r"\^\{([^{}]+)\}", r"<super>\1</super>", t)
-        t = re.sub(r"_\{([^{}]+)\}", r"<sub>\1</sub>", t)
-
-    # Single-char super and sub
-    t = re.sub(r"\^([a-zA-Z0-9+\-])", r"<super>\1</super>", t)
-    t = re.sub(r"_([a-zA-Z0-9+\-])", r"<sub>\1</sub>", t)
+        t = re.sub(r"\\sqrt\{([^{}]+)\}", r"&radic;(\1)", t)
 
     # Mathematical symbols and operators
     replacements = [
         (r"\\le\b|\\leq\b", "&le;"),
         (r"\\ge\b|\\geq\b", "&ge;"),
         (r"\\neq\b|\\ne\b", "&ne;"),
+        (r"\\equiv\b", "&#8801;"),
         (r"\\cdot\b", "&middot;"),
         (r"\\times\b", "&times;"),
-        (r"\\pm\b", "&plusmn;"),
-        (r"\\in\b", "&isin;"),
-        (r"\\notin\b", "&notin;"),
-        (r"\\approx\b", "&asymp;"),
-        (r"\\infty\b", "&infin;"),
-        (r"\\sum\b", "&Sigma;"),
-        (r"\\prod\b", "&Pi;"),
-        (r"\\oplus\b", "&#8853;"),
-        (r"\\dots\b|\\ldots\b", "..."),
-        (r"\\cdots\b", "&middot;&middot;&middot;"),
-        (r"\\alpha\b", "&alpha;"),
-        (r"\\beta\b", "&beta;"),
-        (r"\\gamma\b", "&gamma;"),
-        (r"\\lambda\b", "&lambda;"),
-        (r"\\pi\b", "&pi;"),
-        (r"\\theta\b", "&theta;"),
-        (r"\\sigma\b", "&sigma;"),
-        (r"\\gcd\b", "gcd"),
-        (r"\\min\b", "min"),
-        (r"\\max\b", "max"),
-        (r"\\log\b", "log"),
-        (r"\\bmod\b", "mod"),
+        (r"\\pm(?![a-zA-Z])", "&plusmn;"),
+        (r"\\in(?![a-zA-Z])", "&isin;"),
+        (r"\\notin(?![a-zA-Z])", "&notin;"),
+        (r"\\approx(?![a-zA-Z])", "&asymp;"),
+        (r"\\infty(?![a-zA-Z])", "&infin;"),
+        (r"\\sum(?![a-zA-Z])", "&Sigma;"),
+        (r"\\prod(?![a-zA-Z])", "&Pi;"),
+        (r"\\oplus(?![a-zA-Z])", "&#8853;"),
+        (r"\\dots(?![a-zA-Z])|\\ldots(?![a-zA-Z])", "..."),
+        (r"\\cdots(?![a-zA-Z])", "&middot;&middot;&middot;"),
+        (r"\\to(?![a-zA-Z])|\\rightarrow(?![a-zA-Z])", "&rarr;"),
+        (r"\\leftarrow(?![a-zA-Z])", "&larr;"),
+        (r"\\implies(?![a-zA-Z])|\\Rightarrow(?![a-zA-Z])", "&rArr;"),
+        (r"\\iff(?![a-zA-Z])|\\Leftrightarrow(?![a-zA-Z])", "&hArr;"),
+        (r"\\alpha(?![a-zA-Z])", "&alpha;"),
+        (r"\\beta(?![a-zA-Z])", "&beta;"),
+        (r"\\gamma(?![a-zA-Z])", "&gamma;"),
+        (r"\\lambda(?![a-zA-Z])", "&lambda;"),
+        (r"\\pi(?![a-zA-Z])", "&pi;"),
+        (r"\\theta(?![a-zA-Z])", "&theta;"),
+        (r"\\sigma(?![a-zA-Z])", "&sigma;"),
         (r"\\pmod\{([^{}]+)\}", r"(mod \1)"),
-        (r"\\mathcal\{([^{}]+)\}", r"<i>\1</i>"),
-        (r"\\mathbf\{([^{}]+)\}", r"<b>\1</b>"),
+        (r"\\pmod\s+([a-zA-Z0-9]+)", r"(mod \1)"),
+        (r"\\bmod(?![a-zA-Z])", "mod"),
+        (r"\\gcd(?![a-zA-Z])", "gcd"),
+        (r"\\min(?![a-zA-Z])", "min"),
+        (r"\\max(?![a-zA-Z])", "max"),
+        (r"\\log(?![a-zA-Z])", "log"),
         (r"\\text\{([^{}]+)\}", r"\1"),
+        (r"\\mathbf\{([^{}]+)\}", r"<b>\1</b>"),
+        (r"\\mathcal\{([^{}]+)\}", r"<i>\1</i>"),
         (r"\\left\(", "("),
         (r"\\right\)", ")"),
         (r"\\left\[", "["),
@@ -122,26 +126,64 @@ def latex_to_reportlab_html(tex: str) -> str:
         (r"\\\}", "}"),
         (r"\\ ", " "),
         (r"\\quad", "  "),
-        (r"\\sqrt\{([^{}]+)\}", r"&radic;(\1)"),
     ]
     for pattern, rep in replacements:
         t = re.sub(pattern, rep, t)
 
-    # Protect remaining XML chars
-    t = t.replace("<", "&lt;").replace(">", "&gt;")
-    # Restore allowed ReportLab tags
-    t = t.replace("&lt;super&gt;", "<super>").replace("&lt;/super&gt;", "</super>")
-    t = t.replace("&lt;sub&gt;", "<sub>").replace("&lt;/sub&gt;", "</sub>")
-    t = t.replace("&lt;i&gt;", "<i>").replace("&lt;/i&gt;", "</i>")
-    t = t.replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>")
+    # Standalone minus signs to &minus; (avoid touching inside HTML tags or entities)
+    t = re.sub(r"(?<![a-zA-Z0-9&])-(?=[a-zA-Z0-9(\[])", "&minus;", t)
+    t = re.sub(r"(\s)-(\s)", r"\1&minus;\2", t)
+    t = re.sub(r"([0-9a-zA-Z\)])-([0-9a-zA-Z\(])", r"\1 &minus; \2", t)
 
-    return f'<font face="Helvetica-Oblique">{t}</font>'
+    # Superscripts and subscripts with smaller font size (6.5pt)
+    for _ in range(3):
+        t = re.sub(r"\^\{([^{}]+)\}", r'<super><font size="6.5">\1</font></super>', t)
+        t = re.sub(r"_\{([^{}]+)\}", r'<sub><font size="6.5">\1</font></sub>', t)
+
+    t = re.sub(r"\^([a-zA-Z0-9+\-])", r'<super><font size="6.5">\1</font></super>', t)
+    t = re.sub(r"_([a-zA-Z0-9+\-])", r'<sub><font size="6.5">\1</font></sub>', t)
+
+    # Variables italicization:
+    # Single Latin letters (or common 2-letter tokens like dp) italicized;
+    # Keep digits, operators, entities, tags, and function names upright.
+    UPRIGHT_WORDS = {
+        "gcd", "min", "max", "log", "mod", "abs", "sin", "cos", "tan", "font", "size", "super", "sub"
+    }
+
+    parts = re.split(r"(<[^>]+>|&[a-zA-Z0-9#]+;)", t)
+    for i, part in enumerate(parts):
+        if not part or part.startswith("<") or part.startswith("&"):
+            continue
+        def repl_var(m: re.Match) -> str:
+            w = m.group(0)
+            if w.lower() in UPRIGHT_WORDS:
+                return w
+            if len(w) == 1 and w.isalpha():
+                return f"<i>{w}</i>"
+            if len(w) == 2 and w in {"dp", "sz", "in", "id", "ok", "op"}:
+                return f"<i>{w}</i>"
+            return w
+        parts[i] = re.sub(r"\b[a-zA-Z]+\b", repl_var, part)
+
+    return "".join(parts)
 
 
 def md_to_reportlab_html(text: str) -> str:
     """Safely converts markdown bold, italic, code, LaTeX math, and escapes XML entities for ReportLab Paragraphs."""
-    # 0. Extract math into placeholders to protect from HTML tag escaping
     text = text.replace("\U0001D54F", "")
+
+    # 1. Extract inline code `foo` into placeholders FIRST to prevent cross-interaction with $ and entities
+    codes: List[str] = []
+    def code_store(m: re.Match) -> str:
+        raw = m.group(1)
+        safe = raw.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        idx = len(codes)
+        codes.append(f'<font face="Courier" size="8.5">{safe}</font>')
+        return f"___CODE_PH_{idx}___"
+
+    text = re.sub(r"`([^`]+)`", code_store, text)
+
+    # 2. Extract math into placeholders NEXT
     maths: List[str] = []
     def math_store(m: re.Match) -> str:
         raw_tex = m.group(1)
@@ -154,27 +196,16 @@ def md_to_reportlab_html(text: str) -> str:
     text = re.sub(r"\$\$([^\$]+)\$\$", math_store, text)
     text = re.sub(r"\$([^\$]+)\$", math_store, text)
 
-    # 1. Extract inline code `foo` into placeholders to prevent cross-interaction with ** and entity escaping
-    codes: List[str] = []
-    def code_store(m: re.Match) -> str:
-        raw = m.group(1)
-        safe = raw.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        idx = len(codes)
-        codes.append(f'<font face="Courier" size="8.5">{safe}</font>')
-        return f"___CODE_PH_{idx}___"
+    # 3. Escape bare & that are not already valid HTML entities
+    text = re.sub(r"&(?!(?:amp|lt|gt|quot|le|ge|ne|middot|times|plusmn|isin|notin|asymp|infin|Sigma|Pi|alpha|beta|gamma|lambda|pi|theta|sigma|radic|minus|equiv|#\d+|#x[0-9a-fA-F]+);)", "&amp;", text)
 
-    text = re.sub(r"`([^`]+)`", code_store, text)
-
-    # 2. Escape bare & that are not already valid HTML entities
-    text = re.sub(r"&(?!(?:amp|lt|gt|quot|le|ge|ne|middot|times|plusmn|isin|notin|asymp|infin|Sigma|Pi|alpha|beta|gamma|lambda|pi|theta|sigma|radic|#\d+|#x[0-9a-fA-F]+);)", "&amp;", text)
-
-    # 3. Convert **bold** to <b>bold</b>
+    # 4. Convert **bold** to <b>bold</b>
     text = re.sub(r"\*\*([^*]+)\*\*", r"<b>\1</b>", text)
 
-    # 4. Convert *italic* to <i>italic</i>
+    # 5. Convert *italic* to <i>italic</i>
     text = re.sub(r"(?<!\*)\*([^*]+)\*(?!\*)", r"<i>\1</i>", text)
 
-    # 5. Escape any remaining < or > that aren't allowed ReportLab tags
+    # 6. Escape any remaining < or > that aren't allowed ReportLab tags
     def tag_cleaner(m: re.Match) -> str:
         tag = m.group(0)
         if re.match(r"^</?(?:b|i|font(?:\s+[^>]+)?|super|sub|br/?)>$", tag):
@@ -185,11 +216,11 @@ def md_to_reportlab_html(text: str) -> str:
     # Also escape standalone <
     text = re.sub(r"<(?!(?:/?(?:b|i|font|super|sub|br)))", "&lt;", text)
 
-    # 6. Restore code placeholders
+    # 7. Restore code placeholders
     for idx, c_html in enumerate(codes):
         text = text.replace(f"___CODE_PH_{idx}___", c_html)
 
-    # 7. Restore math placeholders
+    # 8. Restore math placeholders
     for idx, m_html in enumerate(maths):
         text = text.replace(f"___MATH_PH_{idx}___", m_html)
 
