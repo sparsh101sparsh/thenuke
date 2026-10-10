@@ -65,10 +65,97 @@ COLOR_BG_CALLOUT = colors.HexColor("#F8F8F8")
 COLOR_WHITE = colors.HexColor("#FFFFFF")
 
 
+def latex_to_reportlab_html(tex: str) -> str:
+    """Translates LaTeX math expressions into ReportLab Paragraph rich-text markup."""
+    t = tex.strip().strip("$")
+    if not t:
+        return ""
+
+    # Fractions: \frac{num}{den} -> (num / den)
+    for _ in range(3):
+        t = re.sub(r"\\frac\{([^{}]+)\}\{([^{}]+)\}", r"(\1 / \2)", t)
+        t = re.sub(r"\^\{([^{}]+)\}", r"<super>\1</super>", t)
+        t = re.sub(r"_\{([^{}]+)\}", r"<sub>\1</sub>", t)
+
+    # Single-char super and sub
+    t = re.sub(r"\^([a-zA-Z0-9+\-])", r"<super>\1</super>", t)
+    t = re.sub(r"_([a-zA-Z0-9+\-])", r"<sub>\1</sub>", t)
+
+    # Mathematical symbols and operators
+    replacements = [
+        (r"\\le\b|\\leq\b", "&le;"),
+        (r"\\ge\b|\\geq\b", "&ge;"),
+        (r"\\neq\b|\\ne\b", "&ne;"),
+        (r"\\cdot\b", "&middot;"),
+        (r"\\times\b", "&times;"),
+        (r"\\pm\b", "&plusmn;"),
+        (r"\\in\b", "&isin;"),
+        (r"\\notin\b", "&notin;"),
+        (r"\\approx\b", "&asymp;"),
+        (r"\\infty\b", "&infin;"),
+        (r"\\sum\b", "&Sigma;"),
+        (r"\\prod\b", "&Pi;"),
+        (r"\\oplus\b", "&#8853;"),
+        (r"\\dots\b|\\ldots\b", "..."),
+        (r"\\cdots\b", "&middot;&middot;&middot;"),
+        (r"\\alpha\b", "&alpha;"),
+        (r"\\beta\b", "&beta;"),
+        (r"\\gamma\b", "&gamma;"),
+        (r"\\lambda\b", "&lambda;"),
+        (r"\\pi\b", "&pi;"),
+        (r"\\theta\b", "&theta;"),
+        (r"\\sigma\b", "&sigma;"),
+        (r"\\gcd\b", "gcd"),
+        (r"\\min\b", "min"),
+        (r"\\max\b", "max"),
+        (r"\\log\b", "log"),
+        (r"\\bmod\b", "mod"),
+        (r"\\pmod\{([^{}]+)\}", r"(mod \1)"),
+        (r"\\mathcal\{([^{}]+)\}", r"<i>\1</i>"),
+        (r"\\mathbf\{([^{}]+)\}", r"<b>\1</b>"),
+        (r"\\text\{([^{}]+)\}", r"\1"),
+        (r"\\left\(", "("),
+        (r"\\right\)", ")"),
+        (r"\\left\[", "["),
+        (r"\\right\]", "]"),
+        (r"\\\{", "{"),
+        (r"\\\}", "}"),
+        (r"\\ ", " "),
+        (r"\\quad", "  "),
+        (r"\\sqrt\{([^{}]+)\}", r"&radic;(\1)"),
+    ]
+    for pattern, rep in replacements:
+        t = re.sub(pattern, rep, t)
+
+    # Protect remaining XML chars
+    t = t.replace("<", "&lt;").replace(">", "&gt;")
+    # Restore allowed ReportLab tags
+    t = t.replace("&lt;super&gt;", "<super>").replace("&lt;/super&gt;", "</super>")
+    t = t.replace("&lt;sub&gt;", "<sub>").replace("&lt;/sub&gt;", "</sub>")
+    t = t.replace("&lt;i&gt;", "<i>").replace("&lt;/i&gt;", "</i>")
+    t = t.replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>")
+
+    return f'<font face="Helvetica-Oblique">{t}</font>'
+
+
 def md_to_reportlab_html(text: str) -> str:
-    """Safely converts markdown bold, italic, code, and escapes XML entities for ReportLab Paragraphs."""
+    """Safely converts markdown bold, italic, code, LaTeX math, and escapes XML entities for ReportLab Paragraphs."""
+    # 0. Extract math into placeholders to protect from HTML tag escaping
+    text = text.replace("\U0001D54F", "")
+    maths: List[str] = []
+    def math_store(m: re.Match) -> str:
+        raw_tex = m.group(1)
+        rendered = latex_to_reportlab_html(raw_tex)
+        idx = len(maths)
+        maths.append(rendered)
+        return f"___MATH_PH_{idx}___"
+
+    # Display math $$...$$ first, then inline math $...$
+    text = re.sub(r"\$\$([^\$]+)\$\$", math_store, text)
+    text = re.sub(r"\$([^\$]+)\$", math_store, text)
+
     # 1. Escape bare & that are not already valid HTML entities
-    text = re.sub(r"&(?!(?:amp|lt|gt|quot|#\d+|#x[0-9a-fA-F]+);)", "&amp;", text)
+    text = re.sub(r"&(?!(?:amp|lt|gt|quot|le|ge|ne|middot|times|plusmn|isin|notin|asymp|infin|Sigma|Pi|alpha|beta|gamma|lambda|pi|theta|sigma|radic|#\d+|#x[0-9a-fA-F]+);)", "&amp;", text)
 
     # 2. Extract inline code `foo` into placeholders to prevent cross-interaction with **
     codes: List[str] = []
@@ -90,17 +177,21 @@ def md_to_reportlab_html(text: str) -> str:
     # 5. Escape any remaining < or > that aren't allowed ReportLab tags
     def tag_cleaner(m: re.Match) -> str:
         tag = m.group(0)
-        if re.match(r"^</?(?:b|i|font(?:\s+[^>]+)?|br/?)>$", tag):
+        if re.match(r"^</?(?:b|i|font(?:\s+[^>]+)?|super|sub|br/?)>$", tag):
             return tag
         return tag.replace("<", "&lt;").replace(">", "&gt;")
 
     text = re.sub(r"<[^>]*>", tag_cleaner, text)
     # Also escape standalone <
-    text = re.sub(r"<(?!(?:/?(?:b|i|font|br)))", "&lt;", text)
+    text = re.sub(r"<(?!(?:/?(?:b|i|font|super|sub|br)))", "&lt;", text)
 
     # 6. Restore code placeholders
     for idx, c_html in enumerate(codes):
         text = text.replace(f"___CODE_PH_{idx}___", c_html)
+
+    # 7. Restore math placeholders
+    for idx, m_html in enumerate(maths):
+        text = text.replace(f"___MATH_PH_{idx}___", m_html)
 
     return text
 
@@ -112,12 +203,15 @@ class PublicationCanvas(canvas.Canvas):
     edition_label: str = "Monochrome Reference Edition"
     author_branding: str = "Prepared by @issparsh @sumitsingh097"
 
+    is_cp: bool = False
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._saved_page_states: List[Dict[str, Any]] = []
         self.doc_title = getattr(self, "doc_title", self.__class__.doc_title)
         self.edition_label = getattr(self, "edition_label", self.__class__.edition_label)
         self.author_branding = getattr(self, "author_branding", self.__class__.author_branding)
+        self.is_cp = getattr(self, "is_cp", self.__class__.is_cp)
 
     def showPage(self):
         self._saved_page_states.append(dict(self.__dict__))
@@ -147,7 +241,7 @@ class PublicationCanvas(canvas.Canvas):
 
     def _draw_page_decorations(self, total_pages: int):
         pno = self._pageNumber
-        if pno == 1:
+        if pno == 1 and not getattr(self, "is_cp", False):
             # Cover page has its own self-contained layout
             return
 
@@ -155,16 +249,19 @@ class PublicationCanvas(canvas.Canvas):
         self.setFont("Helvetica", 8)
         self.setFillColor(COLOR_MUTED)
 
-        # 1. Top running header text
-        header_text = f"{self.doc_title} — Architecture & Core Internals"
-        self.drawString(54.0, PAGE_HEIGHT - 34.0, header_text)
+        # 1. Top running header text (skip on Page 1 even for CP, since Page 1 has main title)
+        if pno > 1:
+            header_text = f"{self.doc_title} — Architecture & Core Internals"
+            self.drawString(54.0, PAGE_HEIGHT - 34.0, header_text)
 
-        # 2. Top hairline dividing rule
-        self.setStrokeColor(COLOR_HAIRLINE)
-        self.setLineWidth(0.5)
-        self.line(54.0, PAGE_HEIGHT - 42.0, PAGE_WIDTH - 54.0, PAGE_HEIGHT - 42.0)
+            # 2. Top hairline dividing rule
+            self.setStrokeColor(COLOR_HAIRLINE)
+            self.setLineWidth(0.5)
+            self.line(54.0, PAGE_HEIGHT - 42.0, PAGE_WIDTH - 54.0, PAGE_HEIGHT - 42.0)
 
         # 3. Bottom hairline dividing rule
+        self.setStrokeColor(COLOR_HAIRLINE)
+        self.setLineWidth(0.5)
         self.line(54.0, 46.0, PAGE_WIDTH - 54.0, 46.0)
 
         # 4. Bottom footer: Left page count and edition label
@@ -178,9 +275,8 @@ class PublicationCanvas(canvas.Canvas):
         logo_pad = 4.0
         total_brand_w = bw + logo_pad + logo_size
         start_x = (PAGE_WIDTH - 54.0) - total_brand_w
-
         self.drawString(start_x, 32.0, branding_text)
-        self._draw_x_logo(start_x + bw + logo_pad, 32.0, size=logo_size)
+        self._draw_x_logo(start_x + bw + logo_pad, 32.5, size=logo_size)
 
         self.restoreState()
 
@@ -408,6 +504,58 @@ class ReferenceManualBuilder:
             keepWithNext=True,
         )
 
+        # Competitive Programming Styles
+        styles["SampleTitle"] = ParagraphStyle(
+            "SampleTitle",
+            fontName="Helvetica-Bold",
+            fontSize=10.0,
+            leading=13.0,
+            textColor=COLOR_BLACK,
+            spaceBefore=8,
+            spaceAfter=3,
+            keepWithNext=True,
+        )
+        styles["SampleHeader"] = ParagraphStyle(
+            "SampleHeader",
+            fontName="Helvetica-Bold",
+            fontSize=8.5,
+            leading=11.0,
+            textColor=COLOR_BLACK,
+        )
+        styles["SampleText"] = ParagraphStyle(
+            "SampleText",
+            fontName="Courier",
+            fontSize=7.5,
+            leading=9.5,
+            textColor=COLOR_BLACK,
+        )
+        styles["SampleExplanation"] = ParagraphStyle(
+            "SampleExplanation",
+            fontName="Helvetica",
+            fontSize=8.0,
+            leading=11.0,
+            textColor=COLOR_CHARCOAL,
+            spaceBefore=2,
+            spaceAfter=4,
+        )
+        styles["CPMetaBar"] = ParagraphStyle(
+            "CPMetaBar",
+            fontName="Helvetica",
+            fontSize=8.5,
+            leading=12.0,
+            textColor=COLOR_CHARCOAL,
+        )
+        styles["DisplayMath"] = ParagraphStyle(
+            "DisplayMath",
+            fontName="Helvetica-Oblique",
+            fontSize=11.0,
+            leading=15.0,
+            alignment=TA_CENTER,
+            textColor=COLOR_BLACK,
+            spaceBefore=4,
+            spaceAfter=4,
+        )
+
         return styles
 
     def build_cover_page(
@@ -583,6 +731,69 @@ class ReferenceManualBuilder:
         )
         return KeepTogether([t, Spacer(1, 8)])
 
+    def make_sample_box(self, sample_idx: int, input_text: str, output_text: str, explanation: str = "") -> KeepTogether:
+        """Create a side-by-side monospaced Codeforces-style sample input/output table."""
+        title_p = Paragraph(f"<b>Sample {sample_idx}</b>", self.styles.get("SampleTitle", self.styles["SectionHeader"]))
+        in_head = Paragraph("<b>Input</b>", self.styles.get("SampleHeader", self.styles["Body"]))
+        out_head = Paragraph("<b>Output</b>", self.styles.get("SampleHeader", self.styles["Body"]))
+
+        in_lines = "<br/>".join([
+            line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace(" ", "&nbsp;")
+            for line in input_text.strip().splitlines()
+        ]) or "&nbsp;"
+        out_lines = "<br/>".join([
+            line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace(" ", "&nbsp;")
+            for line in output_text.strip().splitlines()
+        ]) or "&nbsp;"
+
+        in_body = Paragraph(in_lines, self.styles.get("SampleText", self.styles["CodeText"]))
+        out_body = Paragraph(out_lines, self.styles.get("SampleText", self.styles["CodeText"]))
+
+        col_w = CONTENT_WIDTH / 2.0
+
+        table_data = [
+            [in_head, out_head],
+            [in_body, out_body],
+        ]
+        t = Table(table_data, colWidths=[col_w, col_w])
+        t.setStyle(
+            TableStyle([
+                ("BACKGROUND", (0, 0), (1, 0), COLOR_BG_CODE),
+                ("BACKGROUND", (0, 1), (1, 1), COLOR_BG_CALLOUT),
+                ("BOX", (0, 0), (-1, -1), 1.0, COLOR_BORDER_CODE),
+                ("INNERGRID", (0, 0), (-1, -1), 0.5, COLOR_BORDER_CODE),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ])
+        )
+
+        elements = [title_p, Spacer(1, 2), t]
+        if explanation:
+            exp_p = Paragraph(f"<i>Explanation:</i> {md_to_reportlab_html(explanation.strip())}", self.styles.get("SampleExplanation", self.styles["Body"]))
+            elements.extend([Spacer(1, 3), exp_p])
+        elements.append(Spacer(1, 6))
+        return KeepTogether(elements)
+
+    def make_cp_meta_bar(self, meta_markdown: str) -> KeepTogether:
+        """Create a shaded, elegant metadata summary bar for CP problems."""
+        meta_html = md_to_reportlab_html(meta_markdown.strip())
+        meta_p = Paragraph(meta_html, self.styles.get("CPMetaBar", self.styles["Body"]))
+        t = Table([[meta_p]], colWidths=[CONTENT_WIDTH])
+        t.setStyle(
+            TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), COLOR_BG_CALLOUT),
+                ("BOX", (0, 0), (-1, -1), 0.5, COLOR_BORDER_CODE),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+            ])
+        )
+        return KeepTogether([Spacer(1, 2), t, Spacer(1, 6)])
+
     def parse_markdown_to_flowables(self, md_text: str) -> List[Any]:
         """Parse structured markdown manual into publication flowables."""
         story: List[Any] = []
@@ -605,26 +816,40 @@ class ReferenceManualBuilder:
 
             # Cover Title detection
             if line.startswith("# ") and not story:
-                title_line = line.lstrip("# ").strip()
-                if ":" in title_line:
-                    topic_name = title_line.split(":")[0].strip()
-                detected_phases = len(set(re.findall(r"^(?:#{1,3}\s*)?PHASE\s+(\d+)", md_text, re.MULTILINE | re.IGNORECASE))) or 6
-                detected_drills = len(re.findall(r"CHALLENGE\s+\d+", md_text, re.IGNORECASE)) or 6
-                sleep_quote = (
-                    "Sleep is the single most effective thing we can do to reset our brain and body health each day.",
-                    "Dr. Matthew Walker"
-                )
-                exercise_quote = (
-                    "Exercise is the most transformative thing that you can do for your brain today. It is a supercharged 401(k) for your brain — and it's completely free.",
-                    "Dr. Wendy Suzuki"
-                )
-                custom_q = sleep_quote if "SLEEP" in topic_name.upper() else (exercise_quote if ("EXERCISE" in topic_name.upper() or "BRAIN" in topic_name.upper()) else None)
-                story.extend(self.build_cover_page(topic_name, num_phases=detected_phases, num_drills=detected_drills, custom_quote=custom_q))
-                i += 1
-                # Skip cover subtitle, branding, and dividers so they don't leak onto Page 2
-                while i < n and "DETAILED SYLLABUS" not in lines[i] and not lines[i].startswith("PHASE ") and not lines[i].startswith("## PART") and not lines[i].startswith("### PHASE") and not re.match(r"^(?:#{1,3}\s*)?PHASE\s+\d+", lines[i], re.IGNORECASE):
+                is_cp_doc = (":::sample" in md_text or "**Platform:**" in md_text or "Problem ID:" in md_text)
+                if is_cp_doc:
+                    title_text = line.lstrip("# ").strip()
+                    story.append(Spacer(1, 4))
+                    story.append(Paragraph(title_text, self.styles["PhaseHeader"]))
+                    story.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_BLACK, spaceBefore=4, spaceAfter=8))
                     i += 1
-                continue
+                    continue
+                else:
+                    title_line = line.lstrip("# ").strip()
+                    if ":" in title_line:
+                        topic_name = title_line.split(":")[0].strip()
+                    detected_phases = len(set(re.findall(r"^(?:#{1,3}\s*)?PHASE\s+(\d+)", md_text, re.MULTILINE | re.IGNORECASE))) or 6
+                    detected_drills = len(re.findall(r"CHALLENGE\s+\d+", md_text, re.IGNORECASE)) or 6
+                    sleep_quote = (
+                        "Sleep is the single most effective thing we can do to reset our brain and body health each day.",
+                        "Dr. Matthew Walker"
+                    )
+                    exercise_quote = (
+                        "Exercise is the most transformative thing that you can do for your brain today. It is a supercharged 401(k) for your brain — and it's completely free.",
+                        "Dr. Wendy Suzuki"
+                    )
+                    custom_q = sleep_quote if "SLEEP" in topic_name.upper() else (exercise_quote if ("EXERCISE" in topic_name.upper() or "BRAIN" in topic_name.upper()) else None)
+                    story.extend(self.build_cover_page(topic_name, num_phases=detected_phases, num_drills=detected_drills, custom_quote=custom_q))
+                    i += 1
+                    # Skip cover subtitle, branding, and dividers so they don't leak onto Page 2
+                    has_body_start = any(
+                        "DETAILED SYLLABUS" in l or l.startswith("PHASE ") or l.startswith("## PART") or l.startswith("### PHASE")
+                        for l in lines[i:]
+                    )
+                    if has_body_start:
+                        while i < n and "DETAILED SYLLABUS" not in lines[i] and not lines[i].startswith("PHASE ") and not lines[i].startswith("## PART") and not lines[i].startswith("### PHASE") and not re.match(r"^(?:#{1,3}\s*)?PHASE\s+\d+", lines[i], re.IGNORECASE):
+                            i += 1
+                    continue
 
             # Syllabus Index detection
             if "DETAILED SYLLABUS" in line.upper():
@@ -740,6 +965,8 @@ class ReferenceManualBuilder:
             # 7. Section Header
             if line.startswith("### ") or line.startswith("## "):
                 sec_title = line.lstrip("# ").strip()
+                if "Senior Architect Analysis" in sec_title:
+                    safe_page_break()
                 story.append(Paragraph(sec_title, self.styles["SectionHeader"]))
                 i += 1
                 continue
@@ -753,6 +980,63 @@ class ReferenceManualBuilder:
                     story.append(Spacer(1, 4))
                     story.append(KeepTogether([diag_flowable]))
                     story.append(Spacer(1, 8))
+                i += 1
+                continue
+
+            # 7c. Competitive Programming Sample Box: :::sample [idx]
+            if line.strip().startswith(":::sample"):
+                s_m = re.match(r"^:::sample\s*(\d*)", line.strip())
+                s_idx = int(s_m.group(1)) if (s_m and s_m.group(1)) else 1
+                i += 1
+                in_lines_buf: List[str] = []
+                out_lines_buf: List[str] = []
+                exp_lines_buf: List[str] = []
+                curr_target = None
+                in_code = False
+                while i < n and not lines[i].strip().startswith(":::"):
+                    s_line = lines[i]
+                    s_trimmed = s_line.strip()
+                    if s_trimmed.startswith("```"):
+                        in_code = not in_code
+                        i += 1
+                        continue
+                    if s_trimmed.lower() in ("#### input", "input:", "**input:**"):
+                        curr_target = "input"
+                    elif s_trimmed.lower() in ("#### output", "output:", "**output:**"):
+                        curr_target = "output"
+                    elif s_trimmed.lower() in ("#### explanation", "explanation:", "**explanation:**"):
+                        curr_target = "exp"
+                    else:
+                        if curr_target == "input":
+                            in_lines_buf.append(s_line)
+                        elif curr_target == "output":
+                            out_lines_buf.append(s_line)
+                        elif curr_target == "exp":
+                            exp_lines_buf.append(s_line)
+                    i += 1
+                if i < n and lines[i].strip().startswith(":::"):
+                    i += 1  # consume closing :::
+                story.append(self.make_sample_box(
+                    sample_idx=s_idx,
+                    input_text="\n".join(in_lines_buf),
+                    output_text="\n".join(out_lines_buf),
+                    explanation=" ".join(exp_lines_buf).strip(),
+                ))
+                continue
+
+            # 7d. CP Problem Metadata Bar: **Platform:** ... | **Time Limit:** ...
+            if line.startswith("**Platform:**") or (line.startswith("**Time Limit:**") and "**Memory Limit:**" in line):
+                story.append(self.make_cp_meta_bar(line))
+                i += 1
+                continue
+
+            # 7e. Display Math Block: $$ formula $$
+            if line.strip().startswith("$$") and line.strip().endswith("$$") and len(line.strip()) > 4:
+                math_content = line.strip()[2:-2].strip()
+                html_m = latex_to_reportlab_html(math_content)
+                story.append(Spacer(1, 4))
+                story.append(Paragraph(html_m, self.styles["DisplayMath"]))
+                story.append(Spacer(1, 4))
                 i += 1
                 continue
 
@@ -813,8 +1097,15 @@ class ReferenceManualBuilder:
 
         flowables = self.parse_markdown_to_flowables(markdown_text)
 
+        is_cp_doc = (":::sample" in markdown_text or "**Platform:**" in markdown_text or "Problem ID:" in markdown_text)
         canvas_maker = PublicationCanvas
-        canvas_maker.doc_title = f"{self.topic}: The Complete Reference Manual"
+        canvas_maker.is_cp = is_cp_doc
+        if is_cp_doc:
+            canvas_maker.doc_title = self.topic
+            canvas_maker.edition_label = "Competitive Programming Reference Edition"
+        else:
+            canvas_maker.doc_title = f"{self.topic}: The Complete Reference Manual"
+            canvas_maker.edition_label = "Monochrome Reference Edition"
 
         doc.build(flowables, canvasmaker=canvas_maker)
         logger.info(f"Published PDF compiled via ReportLab: {self.output_path}")

@@ -26,6 +26,17 @@ from .unified_corpus import (
     IngestionSource,
     UnifiedCorpus,
 )
+from .cp_problem import (
+    CPProblem,
+    CPSample,
+    detect_cp_platform,
+    extract_atcoder_problem,
+    extract_codeforces_problem,
+    extract_cp_problem,
+    extract_leetcode_problem,
+    ingest_cp_problem,
+    is_cp_url,
+)
 from .web_crawler import (
     crawl_url,
     find_chrome_binary,
@@ -89,14 +100,21 @@ def run_ingestion(
                     corpus.add_source(s)
                 continue
 
-            # 2. Web Documentation URLs
+            # 2. Competitive Programming Problem URLs (Codeforces, LeetCode, AtCoder)
+            if is_cp_url(src):
+                logger.info(f"Ingesting Competitive Programming source ({detect_cp_platform(src)}): {src}")
+                cp_src = ingest_cp_problem(src, output_dir=assets_path)
+                corpus.add_source(cp_src)
+                continue
+
+            # 3. Generic Web Documentation URLs
             if src.startswith(("http://", "https://")):
                 logger.info(f"Ingesting Web source: {src}")
                 web_src = crawl_url(src, output_dir=assets_path)
                 corpus.add_source(web_src)
                 continue
 
-            # 3. Local Directory or File
+            # 4. Local Directory or File
             loc_path = Path(src).expanduser().resolve()
             if loc_path.is_dir():
                 logger.info(f"Ingesting local directory: {loc_path}")
@@ -160,4 +178,14 @@ __all__ = [
     "extract_image",
     "extract_text_file",
     "perform_apple_vision_ocr",
+    # Competitive Programming
+    "CPProblem",
+    "CPSample",
+    "is_cp_url",
+    "detect_cp_platform",
+    "extract_cp_problem",
+    "extract_codeforces_problem",
+    "extract_leetcode_problem",
+    "extract_atcoder_problem",
+    "ingest_cp_problem",
 ]

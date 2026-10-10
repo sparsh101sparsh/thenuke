@@ -303,25 +303,34 @@ def run_pass2_textual(pdf_path: Path) -> Pass2TextualResult:
     # ES2024+ signals
     found_signals = [sig for sig in _ES2024_SIGNALS if sig in full_text]
 
+    # Competitive programming reference manual detection
+    is_cp_problem = (
+        "Competitive Programming" in full_text
+        or ":::sample" in full_text
+        or "Platform:" in full_text
+        or "Time Limit:" in full_text
+    )
+
     # Error & warning tallies
     errors = 0
     warnings = 0
 
     if devanagari_hits:
         errors += len(devanagari_hits)
-    if not has_syllabus:
+    if not has_syllabus and not is_cp_problem:
         errors += 1
-    if phase_count < 3:
-        warnings += 1
-    if challenge_count < 3:
-        warnings += 1
+    if not is_cp_problem:
+        if phase_count < 3:
+            warnings += 1
+        if challenge_count < 3:
+            warnings += 1
     if not branding_found:
         errors += 1
 
     return Pass2TextualResult(
         total_text_length=len(full_text),
         devanagari_violations=devanagari_hits[:20],  # cap to 20 for report size
-        has_syllabus_index=has_syllabus,
+        has_syllabus_index=has_syllabus or is_cp_problem,
         phase_count_detected=phase_count,
         challenge_blocks_detected=challenge_count,
         branding_found=branding_found,

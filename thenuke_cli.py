@@ -141,12 +141,20 @@ def run_grill(
     # Extract detected topic from corpus if available
     detected_topic = "JavaScript"
     sources_list = corpus_data.get("sources", [])
+    cp_problem_meta = None
     if sources_list:
-        first_title = sources_list[0].get("title", "")
-        if "git" in first_title.lower():
-            detected_topic = "Git"
-        elif "python" in first_title.lower():
-            detected_topic = "Python"
+        for s in sources_list:
+            if s.get("metadata", {}).get("cp_problem"):
+                cp_problem_meta = s["metadata"]["cp_problem"]
+                break
+        if cp_problem_meta:
+            detected_topic = f"{cp_problem_meta.get('platform', '').title()} - {cp_problem_meta.get('problem_id', '')} {cp_problem_meta.get('title', '')}".strip()
+        else:
+            first_title = sources_list[0].get("title", "")
+            if "git" in first_title.lower():
+                detected_topic = "Git"
+            elif "python" in first_title.lower():
+                detected_topic = "Python"
 
     lod = "senior_architect"
     vit = "strict_need_based"
@@ -174,6 +182,8 @@ def run_grill(
 
     profile_dict = profile.to_dict()
     profile_dict["topic"] = detected_topic
+    if cp_problem_meta:
+        profile_dict["cp_problem"] = cp_problem_meta
     _save_json(profile_path, profile_dict)
     logger.info("Grilling profile written: %s (topic=%s)", profile_path, detected_topic)
     return profile_path
@@ -195,6 +205,24 @@ def run_synthesize(
 
     profile = _load_json(profile_path)
     logger.info("Stage 3 — Synthesis starting (level_of_detail=%s)", profile.get("level_of_detail", "senior_architect"))
+
+    if profile.get("cp_problem"):
+        import re
+        from scripts.ingestion.cp_problem import CPProblem, CPSample
+        cp_dict = profile["cp_problem"]
+        samples = [CPSample(**s) for s in cp_dict.get("samples", [])]
+        cp_kwargs = {k: v for k, v in cp_dict.items() if k != "samples"}
+        problem = CPProblem(samples=samples, **cp_kwargs)
+        md_content = problem.to_structured_markdown()
+
+        out_dir = Path(output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        safe_id = re.sub(r"[^a-zA-Z0-9_-]", "_", problem.problem_id or problem.title)
+        out_path = out_dir / f"thenuke_cp_{safe_id}_{ts}.md"
+        out_path.write_text(md_content, encoding="utf-8")
+        logger.info("CP Reference Manual synthesized to: %s (%d bytes)", out_path, len(md_content))
+        return out_path
 
     config = SynthesisConfig(
         topic=profile.get("topic", "JavaScript"),
@@ -373,7 +401,9 @@ def run_full_pipeline(
     artifacts["markdown"] = str(md_path)
 
     # Stage 4
-    pdf_path = run_compile(md_path)
+    profile_data = _load_json(profile_path)
+    topic = profile_data.get("topic", "Git")
+    pdf_path = run_compile(md_path, topic=topic)
     artifacts["pdf"] = str(pdf_path)
 
     # Stage 5

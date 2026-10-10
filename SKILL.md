@@ -2,11 +2,12 @@
 name: thenuke
 description: >
   thenuke is a multi-agent documentation engine that ingests multi-modal learning
-  resources (YouTube videos/playlists, web documentation, local PDFs/PPTs/videos/screenshots)
+  resources (YouTube videos/playlists, web documentation, local PDFs/PPTs/videos/screenshots,
+  and Competitive Programming problems from Codeforces, LeetCode, and AtCoder)
   and synthesizes high-density engineering reference manuals in 100% Roman-alphabet Hinglish
   (zero Devanagari characters) with PyMuPDF vector diagrams, monochrome aesthetic, and
   mandatory author branding (@issparsh @sumitsingh097 with the official X/Twitter glyph).
-version: 2.0.0
+version: 2.1.0
 authors:
   - "@issparsh"
   - "@sumitsingh097"
@@ -18,6 +19,11 @@ tags:
   - multi-agent
   - vector-diagrams
   - reportlab
+  - competitive-programming
+  - codeforces
+  - leetcode
+  - atcoder
+  - latex-math
   - youtube-ingestion
   - web-crawler
   - pymupdf
@@ -43,6 +49,10 @@ python thenuke_cli.py run \
   "https://www.youtube.com/playlist?list=PLlasXeu85E9cQ32gLCvAvr9vNaUccPVNP" \
   "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide" \
   "/Users/yourname/Downloads/JS_Notes.pdf"
+
+# 🏆 Competitive Programming Problem Reference Manual:
+# Turns Codeforces, LeetCode, or AtCoder problems into clean study documents
+python thenuke_cli.py run "https://codeforces.com/problemset/problem/1915/C" --preset senior_architect_faang --skip-cleanup
 
 # Individual stages
 python thenuke_cli.py ingest "https://youtube.com/..."
@@ -154,6 +164,27 @@ python thenuke_cli.py clean
 - **ZERO PDF Binaries in Git:** All `.gitignore` configurations enforce `*.pdf`, `output/`, and `scratch/`. PDFs are strictly local artifacts generated to `~/Downloads/` or `~/thenuke_workspace/output/`.
 - Repositories store 100% clean, reproducible source code, vector drawing engines, test suites, and documentation.
 
+### Competitive Programming Problem Ingestion & Rendering (Codeforces, LeetCode, AtCoder)
+- **Dedicated Ingestion Module (`scripts/ingestion/cp_problem.py`):**
+  - Detects and specially routes URLs from:
+    - Codeforces: `codeforces.com/problemset/problem/...`, `codeforces.com/contest/.../problem/...`, `codeforces.com/gym/...`
+    - LeetCode: `leetcode.com/problems/...` (via official GraphQL query)
+    - AtCoder: `atcoder.jp/contests/.../tasks/...` (converts `<var>` to LaTeX)
+  - Extracts title, time limit, memory limit, difficulty, tags, problem statement, input/output specifications, constraints, and all sample inputs/outputs.
+- **LaTeX Math Preservation & Vector Rendering:**
+  - All mathematical expressions survive intact without entity corruption or math stripping (e.g. $(-1)^{a+b}S^2$, $1 \le n \le 10^5$, $\sum_{i=1}^n a_i = S^2$, fractions, sub/superscripts).
+  - Converted via `latex_to_reportlab_html` into native ReportLab vector rich-text tags (`<super>`, `<sub>`, `&le;`, `&ge;`, `&Sigma;`, italicized math fonts) aligned directly on canvas baselines.
+- **Monospaced Codeforces-Style Sample Boxes (`:::sample`):**
+  - Samples are rendered as 2-column shaded tables with monospaced Courier font (`Input` vs `Output`) and optional editorial explanations.
+  - Line breaks inside `<div class="test-example-line">` are strictly preserved (no line-collapsing bugs).
+- **Structured Reference Manual Format:**
+  - Document Title & Subtitle + Author Branding (`Prepared by @issparsh @sumitsingh097 𝕏`).
+  - Shaded Metadata Badge (`Platform`, `Problem ID`, `Time Limit`, `Memory Limit`, `Tags`).
+  - Mathematical Problem Statement, Input Specification, Output Specification, Constraints.
+  - Formatted Sample Boxes.
+  - Senior Architect Roman Hinglish Invariant Analysis (`[MENTAL MODEL]`, `[ENGINEERING GOTCHA]`, zero Devanagari).
+  - Clean ISO A4 aesthetic with running headers and official vector Twitter/X footers on every page.
+
 ### Ingestion Invariants & Honest Communication (Strict Operational Rule)
 - **Subtitles-First Priority (Fast Path):**
   - Always attempt subtitle extraction first using `--skip-download` (`hi-orig,hi,en,en.*,hi.*`). Subtitles download in 1–2 seconds with zero video bandwidth consumption.
@@ -227,6 +258,7 @@ Test architecture:
 - `tests/test_challenger_m2_stress.py` — M2: adversarial boundary stress
 - `tests/test_synthesis.py` — M3: synthesis engine (zero Devanagari, challenges, callouts)
 - `tests/test_diagramming_and_qa.py` — M4+M5: vector engine palette, MD parser, QA audit
+- `tests/test_cp_ingestion.py` — CP: Codeforces/LeetCode/AtCoder ingestion, LaTeX math preservation, sample boxes, end-to-end PDF & QA gate
 
 ## Branding
 

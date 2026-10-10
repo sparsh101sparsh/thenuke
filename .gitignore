@@ -41,6 +41,7 @@ htmlcov/
 # Skill local output and scratch caches
 output/
 scratch/
+assets/
 *.pdf
 nuke_ingestion_corpus.json
 grilling_profile.json
