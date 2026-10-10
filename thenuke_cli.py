@@ -214,22 +214,61 @@ def run_compile(
     md_path: Path,
     output_dir: Path = OUTPUT_DIR,
     branding: str = BRANDING,
+    topic: str = "Git",
 ) -> Path:
     """
-    Compile the synthesized Markdown into a branded PDF.
+    Compile the synthesized Markdown into a publication-grade branded PDF via ReportLab.
     """
-    from scripts.diagramming.vector_engine import build_branded_pdf
+    from scripts.diagramming.reportlab_engine import ReferenceManualBuilder
 
-    logger.info("Stage 4 — PDF Compilation starting: %s", md_path)
+    logger.info("Stage 4 — Publication-Grade PDF Compilation starting: %s", md_path)
     md_text = Path(md_path).read_text(encoding="utf-8")
 
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     pdf_path = output_dir / f"thenuke_manual_{ts}.pdf"
     pdf_path.parent.mkdir(parents=True, exist_ok=True)
 
-    out = build_branded_pdf(md_text, pdf_path, branding=branding)
-    logger.info("PDF compiled: %s", out)
+    builder = ReferenceManualBuilder(pdf_path, topic=topic)
+    out = builder.compile(md_text)
+    logger.info("Publication-grade PDF compiled: %s", out)
     return out
+
+
+def run_multi_agent(
+    topic: str = "Git",
+    output_path: Optional[Path] = None,
+    interactive: bool = False,
+) -> Path:
+    """
+    Execute the full Multi-Agent Reference Manual authoring pipeline:
+    1. Grilling (interactive interview or profile ingestion)
+    2. ArchitectAgent: syllabus & contracts
+    3. ResearchAgent: low-level systems briefings
+    4. WriterAgent: Senior Staff Engineer Hinglish authoring
+    5. DiagramAgent: ReportLab Drawing vector diagrams
+    6. ReviewerAgent: 4-Pass QA gate
+    7. ReportLab publication compilation
+    """
+    from scripts.multi_agent.agent_orchestrator import MultiAgentOrchestrator
+    from scripts.grilling.grilling_engine import GrillingEngine
+
+    profile = None
+    if interactive:
+        logger.info("Triggering interactive /grill-me clarification interview...")
+        engine = GrillingEngine(topic=topic)
+        profile = engine.conduct_interview()
+
+    orchestrator = MultiAgentOrchestrator(topic=topic)
+    if output_path is None:
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        output_path = OUTPUT_DIR / f"{topic}_Complete_Reference_Manual_{ts}.pdf"
+
+    compiled_pdf, report = orchestrator.run_multi_agent_pipeline(output_path, profile=profile)
+    if not report.passed:
+        logger.error("Adversarial QA Gate reported issues: %s", report.issues)
+    else:
+        logger.info("Multi-Agent Publication Manual Ready: %s", compiled_pdf)
+    return compiled_pdf
 
 
 # ---------------------------------------------------------------------------
@@ -398,6 +437,12 @@ def build_parser() -> argparse.ArgumentParser:
     clean_p = sub.add_parser("clean", help="Manually wipe scratch directories")
     clean_p.add_argument("--yes", action="store_true", help="Skip confirmation")
 
+    # multi-agent — collaborative authoring pipeline
+    ma_p = sub.add_parser("multi-agent", help="Run collaborative multi-agent authoring & compilation")
+    ma_p.add_argument("--topic", default="Git", help="Subject topic")
+    ma_p.add_argument("--output", default=None, help="Target PDF path")
+    ma_p.add_argument("--interactive", action="store_true", help="Run interactive /grill-me clarification interview")
+
     return parser
 
 
@@ -405,7 +450,17 @@ def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 
-    if args.command == "run":
+    if args.command == "multi-agent":
+        out_path = Path(args.output) if args.output else None
+        pdf_path = run_multi_agent(
+            topic=args.topic,
+            output_path=out_path,
+            interactive=args.interactive,
+        )
+        print(f"Multi-Agent Publication PDF: {pdf_path}")
+        sys.exit(0)
+
+    elif args.command == "run":
         result = run_full_pipeline(
             sources=args.sources,
             non_interactive=args.non_interactive,

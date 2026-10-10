@@ -53,6 +53,8 @@ Git sirf OURS aur THEIRS ko compare nahi karta (agar sirf do ko compare karega t
 
 Git 2.34+ me default merge strategy **ORT** ('Ostensibly Recursive's Twin') hai, jo legacy recursive engine se 10x faster aur conflict resolution me significantly smarter hai.
 
+[DIAGRAM: three_way_merge]
+
 [MENTAL MODEL]
 Three-Way Merge Commit Architecture:
 Normal commits ka exactly 1 parent pointer hota hai (`parent <sha>`).
@@ -63,6 +65,8 @@ Merge commit ka exactly 2 parent pointers hote hain:
         {
             "title": "Chapter 7.3 — Merge Conflict Anatomy: Understanding Conflict Markers (<<<<<<<, =======, >>>>>>>)",
             "body": """Jab Git automatic 3-way merge reconcile nahi kar pata, Git merge process pause kar deta hai, terminal me error emit karta hai, aur conflict wali files ke andar standard Conflict Markers inject kar deta hai.
+
+[DIAGRAM: merge_conflict]
 
 Conflict Markers ka exact anatomy samjho:
 ```text
@@ -349,6 +353,8 @@ The Modern Restore Invariants:
 2. Unstage Files from Index back to Working Tree:
    `git restore --staged <file>`
    (Legacy `git reset HEAD <file>` ka clean alternative). File ko staging area se nikalta hai lekin disk pe tumhara code 100% untouched rehta hai!
+
+[DIAGRAM: reset_matrix]
 
 Code: Modern Undoing Operations
 ```bash

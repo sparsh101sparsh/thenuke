@@ -317,6 +317,8 @@ Iska matlab:
 • Chahe project 50GB ka ho aur usme 100,000 commits hon, ek nayi branch create karne me sirf 41 bytes disk space lagti hai!
 • Branch switch karne me sirf HEAD reference file change hoti hai aur un files ko disk pe update kiya jata hai jo dono branches ke beech different hain.
 
+[DIAGRAM: branching_dag]
+
 Code: Inspecting Branch Pointers Directly on Disk
 ```bash
 # Nayi branch create karo:

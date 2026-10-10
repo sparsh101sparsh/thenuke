@@ -6,7 +6,7 @@ description: >
   and synthesizes high-density engineering reference manuals in 100% Roman-alphabet Hinglish
   (zero Devanagari characters) with PyMuPDF vector diagrams, monochrome aesthetic, and
   mandatory author branding (@issparsh @sumitsingh097 with the official X/Twitter glyph).
-version: 1.0.0
+version: 2.0.0
 authors:
   - "@issparsh"
   - "@sumitsingh097"
@@ -16,6 +16,8 @@ tags:
   - reference-manual
   - roman-hinglish
   - multi-agent
+  - vector-diagrams
+  - reportlab
   - youtube-ingestion
   - web-crawler
   - pymupdf
@@ -24,24 +26,27 @@ tags:
 # thenuke — Multi-Modal Documentation Engine
 
 > Koi bhi resource lo — YouTube playlist, web docs, local PDF — aur ek production-grade
-> engineering reference manual baao in Roman Hinglish. Zero Devanagari characters. Always.
+> engineering reference manual banao in Roman Hinglish. Zero Devanagari characters. Always.
 
 ## Quick Start
 
 ```bash
-# Full pipeline: ingest → grill → synthesize → compile → qa → cleanup
+# 🚀 Multi-Agent Autonomous Pipeline (Recommended):
+# Coordinates Architect, Researcher, Writer, Diagrammer, and Reviewer agents
+python thenuke_cli.py multi-agent --topic Git --output ~/Downloads/Git_Complete_Reference_Manual.pdf
+
+# Interactive /grill-me Clarification Interview Mode:
+python thenuke_cli.py multi-agent --topic Git --interactive
+
+# Full Ingestion + Multi-Agent Pipeline:
 python thenuke_cli.py run \
   "https://www.youtube.com/playlist?list=PLlasXeu85E9cQ32gLCvAvr9vNaUccPVNP" \
   "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide" \
   "/Users/yourname/Downloads/JS_Notes.pdf"
 
-# Non-interactive mode (CI/scripting) with a preset profile
-python thenuke_cli.py run --non-interactive --preset senior_architect_faang \
-  "https://youtu.be/dQw4w9WgXcQ"
-
 # Individual stages
 python thenuke_cli.py ingest "https://youtube.com/..."
-python thenuke_cli.py grill --preset foundations
+python thenuke_cli.py grill --preset senior_architect_faang
 python thenuke_cli.py synthesize
 python thenuke_cli.py compile output/thenuke_manual_*.md
 python thenuke_cli.py qa output/thenuke_manual_*.pdf --report output/qa_report.json
@@ -50,14 +55,15 @@ python thenuke_cli.py clean
 
 ## Pipeline Stages
 
-| Stage | Script | Description |
-|-------|--------|-------------|
-| **1. Ingest** | `scripts/ingestion/` | Ingests YouTube, web URLs, local PDFs/PPTs/videos |
-| **2. Grill** | `scripts/grilling/` | Interactive user interview: depth, visual threshold, audience |
-| **3. Synthesize** | `scripts/synthesis/` | Generates multi-phase Roman Hinglish reference manual |
-| **4. Compile PDF** | `scripts/diagramming/` | PyMuPDF vector diagrams + branding → ISO A4 PDF |
-| **5. QA Audit** | `scripts/qa/` | Dual-pass visual + textual quality audit |
-| **6. Cleanup** | `thenuke_cli.py clean` | Wipes intermediate videos, frames, audio, raw HTML |
+| Stage | Subsystem | Description |
+|-------|-----------|-------------|
+| **1. Ingest** | `scripts/ingestion/` | Multi-source crawler: YouTube (yt-dlp, faster-whisper), web, local files |
+| **2. Grill** | `scripts/grilling/` | Interactive user interview (`/grill-me`): depth, visual threshold, focus |
+| **3. Multi-Agent System** | `scripts/multi_agent/` | Autonomous team: Architect, Researcher, Writer, Diagrammer, Reviewer |
+| **4. Vector Engine** | `scripts/diagramming/` | Native ReportLab `Drawing` vector diagrams (DAGs, 3-Trees, LCA merges) |
+| **5. PDF Compiler** | `reportlab_engine.py` | Publication-grade ISO A4 layout matching standard engineering manuals |
+| **6. 4-Pass QA Gate** | `scripts/qa/` + Reviewer | Automated layout, 0% Devanagari, diagram density, and drill audits |
+| **7. Cleanup** | `thenuke_cli.py clean` | Post-clearance wipe of scratch frames, audio, and HTML |
 
 ## Pipeline Architecture
 

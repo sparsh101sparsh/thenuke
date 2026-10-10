@@ -40,6 +40,8 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from scripts.diagramming.vector_diagrams import get_diagram
+
 logger = logging.getLogger(__name__)
 
 # Dimensions
@@ -697,6 +699,18 @@ class ReferenceManualBuilder:
             if line.startswith("### ") or line.startswith("## "):
                 sec_title = line.lstrip("# ").strip()
                 story.append(Paragraph(sec_title, self.styles["SectionHeader"]))
+                i += 1
+                continue
+
+            # 7b. Technical Vector Diagram Directive: [DIAGRAM: name]
+            diag_match = re.match(r"^\[DIAGRAM:\s*([a-zA-Z0-9_\-]+)\]", line.strip())
+            if diag_match:
+                diag_name = diag_match.group(1).lower()
+                diag_flowable = get_diagram(diag_name)
+                if diag_flowable:
+                    story.append(Spacer(1, 4))
+                    story.append(KeepTogether([diag_flowable]))
+                    story.append(Spacer(1, 8))
                 i += 1
                 continue
 

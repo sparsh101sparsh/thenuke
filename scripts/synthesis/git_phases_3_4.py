@@ -21,6 +21,8 @@ The Three Trees kya hain:
 3. HEAD (Last Committed State):
    HEAD tumhari active branch ke latest commit snapshot ko point karta hai. Ye immutable repository history ka part hai.
 
+[DIAGRAM: three_trees]
+
 [MENTAL MODEL]
 Working Tree (Disk) ---> [git add] ---> Staging Area (Index) ---> [git commit] ---> HEAD (Commit DAG)
            ^                                                                            |

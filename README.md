@@ -67,6 +67,9 @@ Modern technical documentation generation suffers from a fundamental impedance m
 
 | Capability | Specification | Architectural Advantage |
 |---|---|---|
+| **Multi-Agent Authoring System** | `scripts/multi_agent/` | Autonomous team: Architect (syllabus), Researcher (systems briefings), Writer (Roman Hinglish), Diagrammer (vector specs), Reviewer (4-Pass QA) |
+| **Native Vector Technical Diagrams** | `scripts/diagramming/vector_diagrams.py` | Native ReportLab `Drawing` vector diagrams (Commit DAGs, 3-Trees, LCA merges, Rebase replays, Object pointer graphs) at 0 rasterization loss |
+| **ReportLab Publication Compiler** | `scripts/diagramming/reportlab_engine.py` | Professional ISO A4 layout with running hairline rules, vector 𝕏 branding, and strict page budgeting |
 | **Multi-Source Ingestion** | YouTube (720p), Web Documentation, GitHub, PDFs, PPTX, Local Video/Audio, Screenshots | Single unified corpus (`nuke_ingestion_corpus.json`) regardless of input format |
 | **Strict 720p Video Pipeline** | `yt-dlp -f "bestvideo[height<=720]+bestaudio/best[height<=720]"` | Prevents 4K bandwidth saturation while retaining full text sharpness on 1080p slide recordings |
 | **Dynamic Frame Sampling** | Scene-change detection heuristic based on duration: $R = \max(0.05, \min(0.5, \frac{180}{T}))$ | Captures blackboard writing, code diffs, and slide transitions without duplicate frame bloat |

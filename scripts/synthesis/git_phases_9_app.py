@@ -23,6 +23,8 @@ Jab tum `git checkout feature && git rebase main` run karte ho, Git teen steps p
 CRITICAL HASH INVARIANT:
 Kyunki har commit ka parent pointer badal gaya (pehle parent purana commit tha, ab parent `main` ka latest commit hai), har commit ka SHA-1 hash COMPLETELY REGENERATE hota hai! Rebase purane commits ko modify nahi karta — ye brand new commits create karta hai with new timestamps and new parent hashes!
 
+[DIAGRAM: rebase_replay]
+
 Code: Linearizing Commit History via Git Rebase
 ```bash
 # Branch topology before rebase:
@@ -99,6 +101,8 @@ Kabhi bhi blind `git push -f` mat chalao! Agar kisi teammate ne tumhare push kar
 Hamesha use karo:
 `git push --force-with-lease`
 Ye GitHub remote ko check karta hai: agar remote pe koi unexpected new commit hai, push immediately reject ho jayega!
+
+[DIAGRAM: remote_sync]
 
 Code: Enterprise Remote Synchronization Protocol
 ```bash

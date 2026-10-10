@@ -89,6 +89,8 @@ SHA-1 hash ke baare me teen invariants yaad rakho:
 2. Avalanche Effect: File me agar ek single comma ya space bhi change kar do, SHA-1 hash completely different ban jata hai.
 3. Cryptographic Tamper-Proofing: Git me commit history modify karna mathematically impossible hai bina commit hash change kiye. Agar koi purana commit badlega, uska hash badlega, uske child commit ka parent pointer invalid ho jayega, aur poora commit DAG break ho jayega.
 
+[DIAGRAM: object_model]
+
 Code: Manual SHA-1 Computation vs Git hash-object
 ```bash
 # Terminal me raw text ka SHA-1 hash simulate karo:
@@ -247,6 +249,8 @@ Chalo `.git` directory ke har critical component ka internal role samjhein:
 • `.git/objects/`: Git ka content-addressable database. Yahan saare blobs, trees, commits, aur tags zlib-compressed form me store hote hain.
 • `.git/refs/`: Branch aur tag pointers. `refs/heads/` me har local branch ka ek 41-byte text file hota hai jo latest commit SHA-1 store karta hai.
 • `.git/index`: Staging area ka binary cache file. Ye working tree aur commit history ke beech ka bridge hai.
+
+[DIAGRAM: index_binary]
 
 Code: Inspecting the .git Directory Tree
 ```bash
