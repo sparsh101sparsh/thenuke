@@ -72,7 +72,7 @@ Modern technical documentation generation suffers from a fundamental impedance m
 | **ReportLab Publication Compiler** | `scripts/diagramming/reportlab_engine.py` | Professional ISO A4 layout with running hairline rules, vector 𝕏 branding, and strict page budgeting |
 | **Multi-Source Ingestion** | YouTube (720p), Web Documentation, GitHub, PDFs, PPTX, Local Video/Audio, Screenshots | Single unified corpus (`nuke_ingestion_corpus.json`) regardless of input format |
 | **Strict 720p Video Pipeline** | `yt-dlp -f "bestvideo[height<=720]+bestaudio/best[height<=720]"` | Prevents 4K bandwidth saturation while retaining full text sharpness on 1080p slide recordings |
-| **AI Multimodal Visual Self-Analysis** | Direct vision model frame inspection (`view_file`) | Zero programmatic OCR on video frames; AI inspects slides, architecture diagrams, and code natively |
+| **Adaptive Video Frame Analysis (Dual-Mode)** | Ask User: AI Multimodal Visual Inspection vs. Programmatic OCR Pipeline (`--ocr-frames`) | Eliminates token exhaustion on 10h+ videos via OCR, while enabling high-fidelity visual analysis on short/medium talks |
 | **Dynamic Frame Sampling** | Scene-change detection heuristic based on duration: $R = \max(0.05, \min(0.5, \frac{180}{T}))$ | Captures blackboard writing, code diffs, and slide transitions without duplicate frame bloat |
 | **Subtitles-First & Whisper Fallback** | Instant VTT/SRT extraction (2s); Whisper `large-v3-turbo` strictly as fallback for 0-sub videos | Prioritizes official captions instantaneously; zero Whisper overhead when captions are available |
 | **Dual Ingestion Paths** | Fast Path (`--subtitles-only`) vs Full Visual Path (`--download-video`) | Flexible control between instant 2s ingestion and comprehensive multi-GB frame extraction |
@@ -173,7 +173,10 @@ The ingestion engine homogenizes heterogeneous data streams into a normalized `U
   - Features `faster-whisper` (`large-v3-turbo`) fallback: when captions are absent or corrupted, demuxes audio to 16kHz mono WAV via `ffmpeg` and transcribes on Apple Silicon Metal GPU / CUDA.
   - Dynamically extracts visual frames based on video duration:
     $$\text{Sampling Rate} = \max\left(0.05\,\text{fps}, \min\left(0.5\,\text{fps}, \frac{180}{\text{Duration}_{\text{sec}}}\right)\right)$$
-  - **AI Multimodal Visual Self-Analysis (Zero Programmatic Video OCR)**: All video frames are cataloged directly for AI vision inspection (`view_file`). Programmatic OCR is eliminated for video streams, allowing direct agent comprehension of architecture diagrams, slides, whiteboard drawings, and source code.
+  - **Adaptive Video Frame Analysis Protocol (Ask User / Dual-Mode)**:
+    - **Interactive Intake Inquiry**: For video ingestion, the system asks the user which frame analysis strategy to use:
+      1. *Direct AI Multimodal Visual Self-Analysis (`view_file`)*: The AI model directly inspects frames visually to extract diagrams, charts, and slide footnotes. Best for short-to-medium length talks (< 60 min).
+      2. *Programmatic OCR Pipeline (`--ocr-frames` / `ocr_mode=True`)*: Automated local OCR extracts slide text into metadata and transcripts without consuming model vision tokens. Essential for long 2h–10h+ video courses, bootcamps, and lectures to prevent context window exhaustion.
 - **`web_crawler.py`**:
   - Traverses documentation hierarchies and GitHub repositories.
   - Prunes DOM noise (`<nav>`, `<header>`, `<footer>`, `.ads`, `.cookie-banner`) while strictly preserving `.tail` text across inline DOM modifications.

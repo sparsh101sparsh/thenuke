@@ -741,6 +741,7 @@ def ingest_youtube_video(
     ffmpeg_bin: str = "ffmpeg",
     whisper_bin: str = "whisper-cli",
     download_video: bool = True,
+    ocr_mode: bool = False,
 ) -> IngestionSource:
     """Ingest a single YouTube video, returning an IngestionSource object."""
     if not is_youtube_url(url):
@@ -888,13 +889,21 @@ def ingest_youtube_video(
                     duration_seconds=duration,
                     ffmpeg_bin=ffmpeg_bin,
                 )
-                # Invariant: AI Multimodal Visual Self-Analysis (Zero Programmatic Video OCR)
-                # Never run programmatic OCR on video frames. All frames are cataloged directly
-                # so the AI agent inspects them visually via its multimodal vision capabilities.
-                for f_idx, f_path in enumerate(frames):
-                    caption = f"Video frame {f_idx + 1} ({f_path.name})"
-                    extracted_images.append(ExtractedImage(path=str(f_path), caption=caption, ocr_text=""))
-                logger.info(f"Extracted {len(frames)} visual frames cataloged for AI multimodal visual self-analysis (zero OCR).")
+                if ocr_mode:
+                    from .file_extract import perform_apple_vision_ocr
+                    logger.info(f"Running programmatic OCR pipeline on {len(frames)} frames...")
+                    for f_idx, f_path in enumerate(frames):
+                        ocr_txt = perform_apple_vision_ocr(f_path)
+                        caption = f"Video frame {f_idx + 1} ({f_path.name})"
+                        extracted_images.append(ExtractedImage(path=str(f_path), caption=caption, ocr_text=ocr_txt))
+                    logger.info(f"Extracted {len(frames)} frames with programmatic OCR text populated.")
+                else:
+                    # Invariant: AI Multimodal Visual Self-Analysis (Zero Programmatic Video OCR)
+                    # All frames cataloged directly so the AI agent inspects them visually via multimodal vision.
+                    for f_idx, f_path in enumerate(frames):
+                        caption = f"Video frame {f_idx + 1} ({f_path.name})"
+                        extracted_images.append(ExtractedImage(path=str(f_path), caption=caption, ocr_text=""))
+                    logger.info(f"Extracted {len(frames)} visual frames cataloged for AI multimodal visual self-analysis (zero OCR).")
             else:
                 logger.warning(f"Video stream download did not produce a valid file for {url}. Visual frames skipped.")
         else:
@@ -932,6 +941,7 @@ def ingest_youtube_url(
     ffmpeg_bin: str = "ffmpeg",
     whisper_bin: str = "whisper-cli",
     download_video: bool = True,
+    ocr_mode: bool = False,
 ) -> List[IngestionSource]:
     """Ingest a YouTube URL (either a single video or full playlist)."""
     if not is_youtube_url(url):
@@ -950,6 +960,7 @@ def ingest_youtube_url(
                     ffmpeg_bin=ffmpeg_bin,
                     whisper_bin=whisper_bin,
                     download_video=download_video,
+                    ocr_mode=ocr_mode,
                 )
                 sources.append(src)
             except Exception as e:
@@ -964,5 +975,6 @@ def ingest_youtube_url(
                 ffmpeg_bin=ffmpeg_bin,
                 whisper_bin=whisper_bin,
                 download_video=download_video,
+                ocr_mode=ocr_mode,
             )
         ]

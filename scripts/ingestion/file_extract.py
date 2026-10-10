@@ -392,12 +392,15 @@ def extract_media(
     ffmpeg_bin: str = "ffmpeg",
     whisper_bin: str = "whisper-cli",
     extract_frames: bool = False,
+    ocr_mode: bool = False,
 ) -> IngestionSource:
     """Extract audio transcript and optional visual frames from local video/audio files.
     
-    Invariant: AI Multimodal Visual Self-Analysis (Zero Programmatic Video OCR).
-    When extract_frames=True for videos, scene frames are extracted and cataloged directly
-    for AI multimodal vision inspection with zero OCR.
+    Dual-mode support:
+    - AI Multimodal Visual Self-Analysis (default, ocr_mode=False): Frames cataloged with ocr_text=""
+      for direct multimodal inspection by the AI agent without OCR overhead.
+    - Programmatic OCR Pipeline (ocr_mode=True): Runs Apple Vision OCR across frames to extract
+      text programmatically, optimal for long videos to conserve AI context tokens.
     """
     media_name = media_path.stem
     work_dir = output_dir / "media_transcripts"
@@ -466,12 +469,16 @@ def extract_media(
         if f_code == 0:
             frame_files = sorted(list(frames_dir.glob("frame_*.jpg")))
             for idx, f_path in enumerate(frame_files):
+                ocr_txt = perform_apple_vision_ocr(f_path) if ocr_mode else ""
                 extracted_images.append(ExtractedImage(
                     path=str(f_path),
                     caption=f"Local video frame {idx + 1} ({f_path.name})",
-                    ocr_text="",
+                    ocr_text=ocr_txt,
                 ))
-            logger.info(f"Extracted {len(extracted_images)} frames from {media_path.name} for AI multimodal visual self-analysis (zero OCR).")
+            if ocr_mode:
+                logger.info(f"Extracted {len(extracted_images)} frames with programmatic OCR from {media_path.name}.")
+            else:
+                logger.info(f"Extracted {len(extracted_images)} frames from {media_path.name} for AI multimodal visual self-analysis (zero OCR).")
 
     chapters = [
         Chapter(
@@ -591,6 +598,7 @@ SUPPORTED_DOC_EXTS = {".pdf", ".pptx", ".ppt", ".txt", ".md", ".markdown"}
 def extract_local_file(
     file_path: str | Path,
     output_dir: Optional[str | Path] = None,
+    ocr_mode: bool = False,
 ) -> IngestionSource:
     """Extract any supported local file (PDF, PPTX, Video, Audio, Image, Text)."""
     p = Path(file_path).resolve()
@@ -606,7 +614,7 @@ def extract_local_file(
     elif ext in {".pptx", ".ppt"}:
         return extract_pptx(p, out)
     elif ext in SUPPORTED_MEDIA_EXTS:
-        return extract_media(p, out)
+        return extract_media(p, out, ocr_mode=ocr_mode)
     elif ext in SUPPORTED_IMAGE_EXTS:
         return extract_image(p, out)
     elif ext in {".txt", ".md", ".markdown"}:
@@ -619,6 +627,7 @@ def extract_local_file(
 def extract_directory(
     dir_path: str | Path,
     output_dir: Optional[str | Path] = None,
+    ocr_mode: bool = False,
 ) -> List[IngestionSource]:
     """Recursively extract all supported files from a directory."""
     root = Path(dir_path).resolve()
@@ -634,7 +643,7 @@ def extract_directory(
             if item.name.startswith(".") or any(part.startswith(".") for part in item.parts):
                 continue
             try:
-                src = extract_local_file(item, output_dir=output_dir)
+                src = extract_local_file(item, output_dir=output_dir, ocr_mode=ocr_mode)
                 sources.append(src)
             except Exception as e:
                 logger.error(f"Failed to extract {item}: {e}")

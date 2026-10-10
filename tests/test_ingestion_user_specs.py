@@ -223,6 +223,55 @@ class TestIntegrationYouTubeIngestionWithSpecs:
 
     @patch("scripts.ingestion.yt_ingest.extract_video_metadata")
     @patch("scripts.ingestion.yt_ingest.download_subtitles")
+    @patch("scripts.ingestion.yt_ingest.download_youtube_video_720p")
+    @patch("scripts.ingestion.yt_ingest.extract_high_density_frames")
+    @patch("scripts.ingestion.file_extract.perform_apple_vision_ocr")
+    def test_ingest_youtube_video_with_frame_extraction_programmatic_ocr_mode(
+        self,
+        mock_ocr,
+        mock_extract_frames,
+        mock_dl_720p,
+        mock_subs,
+        mock_meta,
+    ):
+        mock_meta.return_value = {
+            "id": "vid_ocr",
+            "title": "10-Hour Full Stack Bootcamp",
+            "duration": 36000,
+            "uploader": "Sparsh",
+            "chapters": [],
+        }
+        mock_ocr.return_value = "function handleRequest(req, res) { return true; }"
+
+        with tempfile.TemporaryDirectory() as td:
+            sub_file = Path(td) / "vid_ocr.en.vtt"
+            sub_file.write_text("WEBVTT\n\n00:00:01.000 --> 00:00:05.000\nBootcamp intro.\n")
+            mock_subs.return_value = sub_file
+
+            fake_vid = Path(td) / "vid_ocr.mp4"
+            fake_vid.touch()
+            mock_dl_720p.return_value = fake_vid
+
+            frame1 = Path(td) / "frame_0001.jpg"
+            frame1.touch()
+            mock_extract_frames.return_value = [frame1]
+
+            source = ingest_youtube_video(
+                "https://www.youtube.com/watch?v=vid_ocr",
+                output_dir=td,
+                download_video=True,
+                ocr_mode=True,
+            )
+
+            assert source.source_type == "youtube"
+            assert len(source.extracted_images) >= 1
+            assert source.extracted_images[0].path == str(frame1)
+            # Programmatic OCR mode: ocr_text populated via OCR engine
+            assert "function handleRequest" in source.extracted_images[0].ocr_text
+            assert mock_ocr.called
+
+    @patch("scripts.ingestion.yt_ingest.extract_video_metadata")
+    @patch("scripts.ingestion.yt_ingest.download_subtitles")
     @patch("scripts.ingestion.yt_ingest.transcribe_audio_fallback")
     @patch("scripts.ingestion.yt_ingest.download_youtube_video_720p")
     def test_subtitles_present_strictly_skips_whisper_fallback(

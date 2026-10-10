@@ -58,6 +58,7 @@ def run_ingestion(
     output_corpus_path: Optional[str | Path] = "nuke_ingestion_corpus.json",
     assets_dir: Optional[str | Path] = "assets",
     download_video: bool = True,
+    ocr_mode: bool = False,
 ) -> UnifiedCorpus:
     """Unified ingestion pipeline runner.
     
@@ -77,11 +78,12 @@ def run_ingestion(
         try:
             # 1. YouTube URLs
             if is_youtube_url(src):
-                logger.info(f"Ingesting YouTube source: {src} (download_video={download_video})")
+                logger.info(f"Ingesting YouTube source: {src} (download_video={download_video}, ocr_mode={ocr_mode})")
                 yt_sources = ingest_youtube_url(
                     src,
                     output_dir=assets_path,
                     download_video=download_video,
+                    ocr_mode=ocr_mode,
                 )
                 for s in yt_sources:
                     corpus.add_source(s)
@@ -98,12 +100,12 @@ def run_ingestion(
             loc_path = Path(src).expanduser().resolve()
             if loc_path.is_dir():
                 logger.info(f"Ingesting local directory: {loc_path}")
-                dir_sources = extract_directory(loc_path, output_dir=assets_path)
+                dir_sources = extract_directory(loc_path, output_dir=assets_path, ocr_mode=ocr_mode)
                 for s in dir_sources:
                     corpus.add_source(s)
             elif loc_path.is_file():
                 logger.info(f"Ingesting local file: {loc_path}")
-                f_src = extract_local_file(loc_path, output_dir=assets_path)
+                f_src = extract_local_file(loc_path, output_dir=assets_path, ocr_mode=ocr_mode)
                 corpus.add_source(f_src)
             else:
                 logger.warning(f"Unrecognized or non-existent source target: {src}")

@@ -161,10 +161,26 @@ python thenuke_cli.py clean
 - **Explicit Ingestion Modes:**
   - `Fast Path` (`--subtitles-only`): 2-second subtitle ingestion. Ideal when narrative transcript + native ReportLab vector diagrams are sufficient.
   - `Full Visual Path` (`--download-video`): Downloads 720p MP4 and extracts scene-change frames via ffmpeg for direct multimodal vision analysis.
-- **AI Multimodal Visual Self-Analysis Invariant (Zero Programmatic Video OCR):**
-  - **NEVER run programmatic OCR (Apple Vision, Tesseract, etc.) on video frames.** Programmatic OCR on video frames is slow, prone to hanging, and incapable of interpreting architectural diagrams, slides, charts, or visual nuances.
-  - **The AI agent itself conducts visual analysis across all extracted video frames.** The agent inspects frame images directly using multimodal vision capabilities (`view_file`), analyzing slides, architecture diagrams, code listings, and whiteboard drawings natively.
-  - Extracted video frames are cataloged directly into `extracted_images` with zero OCR overhead, ready for agent inspection.
+- **Video Frame Analysis Strategy & Interactive Intake Protocol (Token Economics vs. Visual Fidelity):**
+  - **Mandatory User Inquiry Before Processing Video Frames:**
+    When ingesting a video with visual slides, diagrams, or code demos, the AI assistant **MUST ask the user** (or prompt during the intake/grilling phase) which frame analysis strategy to use:
+    1. **Direct AI Multimodal Visual Analysis (Frame-by-Frame):**
+       - The AI assistant directly inspects extracted frames using multimodal vision (`view_file`).
+       - *Capability:* Captures high-density architecture diagrams, complex data visualizations, fMRI scans, slide footnotes, and unread academic citations with zero OCR distortion.
+       - *Token & Context Limit Warning:* Token-intensive. Best suited for short-to-medium videos (< 30–60 minutes, TED talks, keynotes, targeted tutorials). For a long video (e.g. 5–10 hours), inspecting thousands of frames will exhaust model context limits and consume massive token budgets.
+    2. **Programmatic OCR Pipeline (`--ocr-frames` / `ocr_mode=True`):**
+       - The ingestion engine runs local Apple Vision / OCR across extracted frames and saves text directly into metadata and transcript corpus (`ocr_text`).
+       - *Capability:* Extremely token-efficient and fast. Extracts textual code, terminal commands, and bullet points without consuming vision context tokens.
+       - *Recommended for:* Long multi-hour video courses, bootcamps, and semester lecture series (2h–10h+) where context preservation is critical.
+  - **Interactive Inquiry Prompt Template:**
+    When ingesting a video without an explicit user directive, prompt the user:
+    > *"Video Frame Analysis Approach:*
+    > *• Option 1: Direct AI Multimodal Visual Analysis (Highest visual fidelity for diagrams/slides; recommended for < 60 min videos; token-intensive).*
+    > *• Option 2: Programmatic OCR Pipeline (Fast, token-efficient slide text extraction; recommended for long 2h–10h+ videos to avoid context exhaustion).*
+    > *Which approach would you prefer for this video?"*
+  - **Execution Rules:**
+    - If user selects **AI Multimodal Visual Analysis**: Frames are cataloged into `extracted_images` with `ocr_text=""` and the AI inspects relevant scene frames directly via `view_file`.
+    - If user selects **Programmatic OCR**: The ingestion pipeline runs OCR on the frames and populates `ocr_text` so the model reads the extracted text directly.
 - **Zero-Pretense / Zero-Fluff Communication Policy:**
   - If a video is long (> 30 minutes, > 500 MB) and video downloading will take time:
     - State the reality to the user immediately in plain language:
