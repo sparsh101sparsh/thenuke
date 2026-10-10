@@ -29,6 +29,7 @@ import lxml.html
 import requests
 
 from .unified_corpus import Chapter, CodeBlock, IngestionSource
+from ..diagramming.reportlab_engine import normalize_and_sanitize_markdown
 
 logger = logging.getLogger(__name__)
 
@@ -355,6 +356,7 @@ def clean_html_formatting_to_markdown(el: lxml.html.HtmlElement) -> str:
     # Clean multiple blank lines
     clean_text = re.sub(r"\n{3,}", "\n\n", clean_text)
     clean_text = normalize_math_delimiters(clean_text)
+    clean_text = normalize_and_sanitize_markdown(clean_text)
 
     return clean_text.strip()
 

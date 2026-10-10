@@ -259,6 +259,45 @@ Test architecture:
 - `tests/test_synthesis.py` — M3: synthesis engine (zero Devanagari, challenges, callouts)
 - `tests/test_diagramming_and_qa.py` — M4+M5: vector engine palette, MD parser, QA audit
 - `tests/test_cp_ingestion.py` — CP: Codeforces/LeetCode/AtCoder ingestion, LaTeX math preservation, sample boxes, end-to-end PDF & QA gate
+- `tests/test_rendering_invariants.py` — Rendering Invariants: escape artifact defense, math parity scoping, typography fidelity, XML resilience, and Pass 2 textual QA audits
+
+## Watertight Rendering Invariants Contract
+
+To guarantee that broken formatting, raw escapes, unrendered math, or XML parsing errors **never occur**, the pipeline enforces the following invariants at all times:
+
+### 1. Pre-Flight Input Normalization
+- **Escape Character Sanitization:** All raw strings pass through `normalize_and_sanitize_markdown()`. Literal `\n- ` and `\n• ` are converted into real newline bullet points `\n• `.
+- **LaTeX `\n` Protection:** Valid LaTeX commands beginning with `\n` (`\ne`, `\neq`, `\notin`, `\neg`, `\nu`, `\nabla`, `\natural`, etc.) are preserved verbatim, shielding them from naive newline splitting.
+- **Tab Character Normalization:** Raw ASCII tab characters (`\t`) are expanded to 4 spaces, while raw string LaTeX macros like `\times`, `\theta`, `\to` remain untouched.
+- **Inline Code Shielding:** Backtick fences (`...`) are extracted into placeholders before any character or delimiter transformations occur, preventing regex interference with internal symbols (e.g. `$`, `&`, `<`).
+
+### 2. Math Parity & Scoped Delimiters
+- **Strict Delimiter Scoping:** Inline math is matched via `(?<!\\)\$(?!\s)([^\$\n\r]+?)(?<!\s)\$`. Math expressions **cannot cross newlines** and **cannot have leading/trailing whitespace**, adhering strictly to Pandoc and KaTeX standards.
+- **Parity Inversion Prevention:** Unmatched or trailing dollar signs on any line never bleed into subsequent lines or invert document math parity.
+- **Currency Isolation:** Currency patterns (`$100`, `$50`) with trailing punctuation or whitespace are preserved verbatim as standard text.
+- **Display Math Support:** Block math (`$$...$$`) is parsed independently with multi-line support and converted to ReportLab flowables.
+
+### 3. Mathematical Typography Fidelity
+- **AMS-LaTeX & KaTeX Alignment:** Superscripts and subscripts (`^`, `_`, `^{...}`, `_{...}`) are rendered with proportional downscaling (`<font size="6.5">`) for crisp, readable exponents.
+- **Upright Roman Standards:** Digits, operators (`+`, `-`, `=`, `&minus;`), and mathematical functions (`gcd`, `min`, `max`, `log`, `ln`, `mod`, `sin`, `cos`) are rendered upright; single Latin variables are italicized.
+- **True Minus Signs:** Standalone negation and subtraction operators are rendered as `&minus;` rather than ambiguous ASCII hyphens.
+
+### 4. Zero-Crash XML Resilience
+- **Multi-Layer `safe_paragraph`:** All ReportLab `Paragraph` calls are wrapped with automatic fallback recovery:
+  1. *Primary:* Direct ReportLab XML parse.
+  2. *Secondary:* `emergency_xml_repair()` strips unknown font faces, balances open/close tags, and escapes bare `&` and `<`.
+  3. *Tertiary:* Complete tag stripping with entity escaping (`&amp;`, `&lt;`, `&gt;`).
+  4. *Ultimate:* Sanitized basic ASCII plain text.
+- Under zero circumstances can a document compilation fail due to ExpatError, unclosed tags, or malformed user text.
+
+### 5. Automated Textual QA Gate
+Pass 2 of `qa_audit_engine.py` inspects the compiled PDF text layer for:
+- Zero Devanagari characters (100% Roman-alphabet Hinglish enforcement).
+- Zero literal escape artifacts (`\n-`, `\n•`, `\n*`).
+- Zero leaked internal placeholders (`___CODE_PH_`, `___MATH_PH_`, `___PRE_CODE_PH_`, etc.).
+- Zero unrendered math delimiters (`$$$`).
+
+Any violation halts publication immediately and triggers automatic remediation.
 
 ## Branding
 

@@ -65,6 +65,118 @@ COLOR_BG_CALLOUT = colors.HexColor("#F8F8F8")
 COLOR_WHITE = colors.HexColor("#FFFFFF")
 
 
+LATEX_N_MACROS = {
+    "ne", "neq", "notin", "neg", "nu", "nabla", "natural", "nearrow", "nwarrow",
+    "nexists", "normalsize", "noindent", "newline", "nobreak", "number", "not",
+    "newcommand", "newenvironment", "null"
+}
+
+
+def normalize_and_sanitize_markdown(text: str) -> str:
+    """Pre-flight normalization and defense against escape artifacts and broken delimiters."""
+    if not text:
+        return ""
+
+    # Normalize line endings
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+
+    # Step 1: Shield inline code `...`
+    codes: List[str] = []
+    def code_store(m: re.Match) -> str:
+        idx = len(codes)
+        codes.append(m.group(0))
+        return f"___PRE_CODE_PH_{idx}___"
+    text = re.sub(r"`[^`]+`", code_store, text)
+
+    # Step 2: Convert literal \n- or \n• or \n* into real newline bullets
+    text = re.sub(r"\\n\s*[-*•]\s*", "\n• ", text)
+
+    # Step 3: Match literal \n where it is an unescaped newline artifact
+    def n_replacer(m: re.Match) -> str:
+        full = m.group(0)
+        after = m.group(1)
+        word_m = re.match(r"^[a-zA-Z]+", after)
+        if word_m:
+            macro_candidate = "n" + word_m.group(0).lower()
+            if macro_candidate in LATEX_N_MACROS:
+                return "\\n" + after  # keep \ne, \neq, \notin intact!
+            return "\n" + after
+        return "\n" + after
+
+    text = re.sub(r"\\n([a-zA-Z0-9\s.,;!?:()\[\]{}<>=+\-*/_]*|$)", n_replacer, text)
+
+    # Step 4: Convert ASCII tab characters to 4 spaces
+    text = text.replace("\t", "    ")
+
+    # Step 5: Restore inline code
+    for idx, c in enumerate(codes):
+        text = text.replace(f"___PRE_CODE_PH_{idx}___", c)
+
+    return text
+
+
+def emergency_xml_repair(text: str) -> str:
+    """Repairs broken XML tags, unescaped ampersands/brackets, and unclosed tags for ReportLab Paragraphs."""
+    # 1. Escape bare ampersands
+    text = re.sub(
+        r"&(?!(?:amp|lt|gt|quot|le|ge|ne|middot|times|plusmn|isin|notin|asymp|infin|Sigma|Pi|alpha|beta|gamma|lambda|pi|theta|sigma|radic|minus|equiv|#\d+|#x[0-9a-fA-F]+);)",
+        "&amp;",
+        text,
+    )
+    # 2. Escape all < and > that are not strictly valid paired ReportLab tags
+    text = re.sub(r"<(?!(?:/?(?:b|i|font(?:\s+[^>]+)?|super|sub)\b|br\s*/?>))", "&lt;", text)
+
+    # 3. Strip unknown font faces: only allow standard/safe font names
+    def font_replacer(m: re.Match) -> str:
+        attrs = m.group(1) or ""
+        face_m = re.search(r"""face=['"]([^'"]+)['"]""", attrs)
+        safe_faces = {"Helvetica", "Helvetica-Bold", "Helvetica-Oblique", "Courier", "Courier-Bold", "Times-Roman"}
+        if face_m and face_m.group(1) not in safe_faces:
+            attrs = re.sub(r"""face=['"][^'"]+['"]""", "", attrs).strip()
+        size_m = re.search(r"""size=['"]([^'"]+)['"]""", attrs)
+        size_part = f' size="{size_m.group(1)}"' if size_m else ""
+        face_part = f' face="{face_m.group(1)}"' if face_m and face_m.group(1) in safe_faces else ""
+        res = f"<font{face_part}{size_part}>".replace("  ", " ")
+        return res if res != "<font>" else "<font>"
+
+    text = re.sub(r"<font(\s+[^>]*)?>", font_replacer, text)
+
+    # 4. Remove orphaned closing tags and ensure all opened tags are closed
+    for tag in ["b", "i", "super", "sub", "font"]:
+        opens = len(re.findall(rf"<{tag}(?:\s+[^>]+)?>", text))
+        closes = len(re.findall(rf"</{tag}>", text))
+        if closes > opens:
+            diff = closes - opens
+            for _ in range(diff):
+                text = re.sub(rf"</{tag}>", "", text, count=1)
+        elif opens > closes:
+            text += f"</{tag}>" * (opens - closes)
+    return text
+
+
+def safe_paragraph(html: str, style: Any) -> Paragraph:
+    """Creates a ReportLab Paragraph with automatic fallback on ExpatError or formatting errors.
+    
+    Guaranteed NEVER to raise an exception under any circumstances.
+    """
+    try:
+        return Paragraph(html, style)
+    except Exception as exc1:
+        logger.warning(f"ReportLab Paragraph parsing error: {exc1}. Applying emergency XML sanitization.")
+        try:
+            clean_html = emergency_xml_repair(html)
+            return Paragraph(clean_html, style)
+        except Exception as exc2:
+            logger.warning(f"ReportLab Paragraph secondary parse error: {exc2}. Stripping markup to plain text.")
+            plain = re.sub(r"<[^>]+>", "", html)
+            plain = plain.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            try:
+                return Paragraph(plain, style)
+            except Exception:
+                safe_text = re.sub(r"[^\x20-\x7E\n]", " ", plain)
+                return Paragraph(safe_text, style)
+
+
 def latex_to_reportlab_html(tex: str) -> str:
     """Translates LaTeX math expressions into ReportLab Paragraph rich-text markup."""
     t = tex.strip().strip("$")
@@ -81,16 +193,18 @@ def latex_to_reportlab_html(tex: str) -> str:
 
     # Mathematical symbols and operators
     replacements = [
-        (r"\\le\b|\\leq\b", "&le;"),
-        (r"\\ge\b|\\geq\b", "&ge;"),
-        (r"\\neq\b|\\ne\b", "&ne;"),
-        (r"\\equiv\b", "&#8801;"),
-        (r"\\cdot\b", "&middot;"),
-        (r"\\times\b", "&times;"),
+        (r"\\le(?![a-zA-Z])|\\leq(?![a-zA-Z])", "&le;"),
+        (r"\\ge(?![a-zA-Z])|\\geq(?![a-zA-Z])", "&ge;"),
+        (r"\\neq(?![a-zA-Z])|\\ne(?![a-zA-Z])", "&ne;"),
+        (r"\\equiv(?![a-zA-Z])", "&#8801;"),
+        (r"\\cdot(?![a-zA-Z])", "&middot;"),
+        (r"\\times(?![a-zA-Z])", "&times;"),
         (r"\\pm(?![a-zA-Z])", "&plusmn;"),
+        (r"\\mp(?![a-zA-Z])", "&#8723;"),
         (r"\\in(?![a-zA-Z])", "&isin;"),
         (r"\\notin(?![a-zA-Z])", "&notin;"),
         (r"\\approx(?![a-zA-Z])", "&asymp;"),
+        (r"\\sim(?![a-zA-Z])", "~"),
         (r"\\infty(?![a-zA-Z])", "&infin;"),
         (r"\\sum(?![a-zA-Z])", "&Sigma;"),
         (r"\\prod(?![a-zA-Z])", "&Pi;"),
@@ -98,7 +212,7 @@ def latex_to_reportlab_html(tex: str) -> str:
         (r"\\dots(?![a-zA-Z])|\\ldots(?![a-zA-Z])", "..."),
         (r"\\cdots(?![a-zA-Z])", "&middot;&middot;&middot;"),
         (r"\\to(?![a-zA-Z])|\\rightarrow(?![a-zA-Z])", "&rarr;"),
-        (r"\\leftarrow(?![a-zA-Z])", "&larr;"),
+        (r"\\leftarrow(?![a-zA-Z])|\\gets(?![a-zA-Z])", "&larr;"),
         (r"\\implies(?![a-zA-Z])|\\Rightarrow(?![a-zA-Z])", "&rArr;"),
         (r"\\iff(?![a-zA-Z])|\\Leftrightarrow(?![a-zA-Z])", "&hArr;"),
         (r"\\alpha(?![a-zA-Z])", "&alpha;"),
@@ -115,6 +229,8 @@ def latex_to_reportlab_html(tex: str) -> str:
         (r"\\min(?![a-zA-Z])", "min"),
         (r"\\max(?![a-zA-Z])", "max"),
         (r"\\log(?![a-zA-Z])", "log"),
+        (r"\\ln(?![a-zA-Z])", "ln"),
+        (r"\\exp(?![a-zA-Z])", "exp"),
         (r"\\text\{([^{}]+)\}", r"\1"),
         (r"\\mathbf\{([^{}]+)\}", r"<b>\1</b>"),
         (r"\\mathcal\{([^{}]+)\}", r"<i>\1</i>"),
@@ -126,6 +242,7 @@ def latex_to_reportlab_html(tex: str) -> str:
         (r"\\\}", "}"),
         (r"\\ ", " "),
         (r"\\quad", "  "),
+        (r"\\qquad", "    "),
     ]
     for pattern, rep in replacements:
         t = re.sub(pattern, rep, t)
@@ -147,7 +264,7 @@ def latex_to_reportlab_html(tex: str) -> str:
     # Single Latin letters (or common 2-letter tokens like dp) italicized;
     # Keep digits, operators, entities, tags, and function names upright.
     UPRIGHT_WORDS = {
-        "gcd", "min", "max", "log", "mod", "abs", "sin", "cos", "tan", "font", "size", "super", "sub"
+        "gcd", "min", "max", "log", "ln", "exp", "mod", "abs", "sin", "cos", "tan", "font", "size", "super", "sub"
     }
 
     parts = re.split(r"(<[^>]+>|&[a-zA-Z0-9#]+;)", t)
@@ -170,7 +287,8 @@ def latex_to_reportlab_html(tex: str) -> str:
 
 def md_to_reportlab_html(text: str) -> str:
     """Safely converts markdown bold, italic, code, LaTeX math, and escapes XML entities for ReportLab Paragraphs."""
-    text = text.replace("\U0001D54F", "")
+    # 0. Clean unprintable glyphs and normalize line endings
+    text = normalize_and_sanitize_markdown(text)
 
     # 1. Extract inline code `foo` into placeholders FIRST to prevent cross-interaction with $ and entities
     codes: List[str] = []
@@ -184,6 +302,9 @@ def md_to_reportlab_html(text: str) -> str:
     text = re.sub(r"`([^`]+)`", code_store, text)
 
     # 2. Extract math into placeholders NEXT
+    # Protect escaped dollar signs
+    text = text.replace(r"\$", "___ESCAPED_DOLLAR___")
+
     maths: List[str] = []
     def math_store(m: re.Match) -> str:
         raw_tex = m.group(1)
@@ -192,9 +313,10 @@ def md_to_reportlab_html(text: str) -> str:
         maths.append(rendered)
         return f"___MATH_PH_{idx}___"
 
-    # Display math $$...$$ first, then inline math $...$
-    text = re.sub(r"\$\$([^\$]+)\$\$", math_store, text)
-    text = re.sub(r"\$([^\$]+)\$", math_store, text)
+    # Display math $$...$$ first (strictly within block)
+    text = re.sub(r"\$\$([^\$]+?)\$\$", math_store, text)
+    # Inline math $...$ (strictly single-line, Pandoc-compliant non-space boundary)
+    text = re.sub(r"(?<!\\)\$(?!\s)([^\$\n\r]+?)(?<!\s)\$", math_store, text)
 
     # 3. Escape bare & that are not already valid HTML entities
     text = re.sub(r"&(?!(?:amp|lt|gt|quot|le|ge|ne|middot|times|plusmn|isin|notin|asymp|infin|Sigma|Pi|alpha|beta|gamma|lambda|pi|theta|sigma|radic|minus|equiv|#\d+|#x[0-9a-fA-F]+);)", "&amp;", text)
@@ -206,15 +328,7 @@ def md_to_reportlab_html(text: str) -> str:
     text = re.sub(r"(?<!\*)\*([^*]+)\*(?!\*)", r"<i>\1</i>", text)
 
     # 6. Escape any remaining < or > that aren't allowed ReportLab tags
-    def tag_cleaner(m: re.Match) -> str:
-        tag = m.group(0)
-        if re.match(r"^</?(?:b|i|font(?:\s+[^>]+)?|super|sub|br/?)>$", tag):
-            return tag
-        return tag.replace("<", "&lt;").replace(">", "&gt;")
-
-    text = re.sub(r"<[^>]*>", tag_cleaner, text)
-    # Also escape standalone <
-    text = re.sub(r"<(?!(?:/?(?:b|i|font|super|sub|br)))", "&lt;", text)
+    text = re.sub(r"<(?!(?:/?(?:b|i|font(?:\s+[^>]+)?|super|sub)\b|br\s*/?>))", "&lt;", text)
 
     # 7. Restore code placeholders
     for idx, c_html in enumerate(codes):
@@ -223,6 +337,12 @@ def md_to_reportlab_html(text: str) -> str:
     # 8. Restore math placeholders
     for idx, m_html in enumerate(maths):
         text = text.replace(f"___MATH_PH_{idx}___", m_html)
+
+    # 9. Restore shielded dollar signs
+    text = text.replace("___ESCAPED_DOLLAR___", "$")
+
+    # 10. Emergency XML repair to guarantee valid markup
+    text = emergency_xml_repair(text)
 
     return text
 
@@ -747,8 +867,8 @@ class ReferenceManualBuilder:
 
     def make_callout_box(self, header: str, body_text: str) -> KeepTogether:
         """Create a styled callout box flowable with border and soft background."""
-        head_p = Paragraph(f"<b>{header}</b>", self.styles["CalloutHead"])
-        body_p = Paragraph(md_to_reportlab_html(body_text.strip()), self.styles["CalloutBody"])
+        head_p = safe_paragraph(f"<b>{header}</b>", self.styles["CalloutHead"])
+        body_p = safe_paragraph(md_to_reportlab_html(body_text.strip()), self.styles["CalloutBody"])
         t = Table([[head_p], [body_p]], colWidths=[CONTENT_WIDTH])
         t.setStyle(
             TableStyle([
@@ -764,9 +884,9 @@ class ReferenceManualBuilder:
 
     def make_sample_box(self, sample_idx: int, input_text: str, output_text: str, explanation: str = "") -> KeepTogether:
         """Create a side-by-side monospaced Codeforces-style sample input/output table."""
-        title_p = Paragraph(f"<b>Sample {sample_idx}</b>", self.styles.get("SampleTitle", self.styles["SectionHeader"]))
-        in_head = Paragraph("<b>Input</b>", self.styles.get("SampleHeader", self.styles["Body"]))
-        out_head = Paragraph("<b>Output</b>", self.styles.get("SampleHeader", self.styles["Body"]))
+        title_p = safe_paragraph(f"<b>Sample {sample_idx}</b>", self.styles.get("SampleTitle", self.styles["SectionHeader"]))
+        in_head = safe_paragraph("<b>Input</b>", self.styles.get("SampleHeader", self.styles["Body"]))
+        out_head = safe_paragraph("<b>Output</b>", self.styles.get("SampleHeader", self.styles["Body"]))
 
         in_lines = "<br/>".join([
             line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace(" ", "&nbsp;")
@@ -777,8 +897,8 @@ class ReferenceManualBuilder:
             for line in output_text.strip().splitlines()
         ]) or "&nbsp;"
 
-        in_body = Paragraph(in_lines, self.styles.get("SampleText", self.styles["CodeText"]))
-        out_body = Paragraph(out_lines, self.styles.get("SampleText", self.styles["CodeText"]))
+        in_body = safe_paragraph(in_lines, self.styles.get("SampleText", self.styles["CodeText"]))
+        out_body = safe_paragraph(out_lines, self.styles.get("SampleText", self.styles["CodeText"]))
 
         col_w = CONTENT_WIDTH / 2.0
 
@@ -803,7 +923,7 @@ class ReferenceManualBuilder:
 
         elements = [title_p, Spacer(1, 2), t]
         if explanation:
-            exp_p = Paragraph(f"<i>Explanation:</i> {md_to_reportlab_html(explanation.strip())}", self.styles.get("SampleExplanation", self.styles["Body"]))
+            exp_p = safe_paragraph(f"<i>Explanation:</i> {md_to_reportlab_html(explanation.strip())}", self.styles.get("SampleExplanation", self.styles["Body"]))
             elements.extend([Spacer(1, 3), exp_p])
         elements.append(Spacer(1, 6))
         return KeepTogether(elements)
@@ -811,7 +931,7 @@ class ReferenceManualBuilder:
     def make_cp_meta_bar(self, meta_markdown: str) -> KeepTogether:
         """Create a shaded, elegant metadata summary bar for CP problems."""
         meta_html = md_to_reportlab_html(meta_markdown.strip())
-        meta_p = Paragraph(meta_html, self.styles.get("CPMetaBar", self.styles["Body"]))
+        meta_p = safe_paragraph(meta_html, self.styles.get("CPMetaBar", self.styles["Body"]))
         t = Table([[meta_p]], colWidths=[CONTENT_WIDTH])
         t.setStyle(
             TableStyle([
@@ -828,6 +948,7 @@ class ReferenceManualBuilder:
     def parse_markdown_to_flowables(self, md_text: str) -> List[Any]:
         """Parse structured markdown manual into publication flowables."""
         story: List[Any] = []
+        md_text = normalize_and_sanitize_markdown(md_text)
         lines = md_text.splitlines()
         i = 0
         n = len(lines)
@@ -851,7 +972,7 @@ class ReferenceManualBuilder:
                 if is_cp_doc:
                     title_text = line.lstrip("# ").strip()
                     story.append(Spacer(1, 4))
-                    story.append(Paragraph(title_text, self.styles["PhaseHeader"]))
+                    story.append(safe_paragraph(title_text, self.styles["PhaseHeader"]))
                     story.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_BLACK, spaceBefore=4, spaceAfter=8))
                     i += 1
                     continue
@@ -889,7 +1010,7 @@ class ReferenceManualBuilder:
                     safe_page_break()
                 in_syllabus = True
                 clean_title = re.sub(r"^#+\s*", "", line.strip("=").strip())
-                story.append(Paragraph(clean_title, self.styles["TOCHeader"]))
+                story.append(safe_paragraph(clean_title, self.styles["TOCHeader"]))
                 story.append(HRFlowable(width="100%", thickness=1.0, color=COLOR_BLACK, spaceBefore=4, spaceAfter=6))
                 i += 1
                 continue
@@ -903,19 +1024,19 @@ class ReferenceManualBuilder:
 
             if in_syllabus:
                 if line.startswith("PHASE ") or re.match(r"^(?:PART|Phase)\s+[IVXLCDM\d]+", line, re.IGNORECASE):
-                    story.append(Paragraph(line.strip(), self.styles["TOCPhase"]))
+                    story.append(safe_paragraph(line.strip(), self.styles["TOCPhase"]))
                 elif line.startswith("Topics:"):
-                    story.append(Paragraph(line.strip(), self.styles["TOCSub"]))
+                    story.append(safe_paragraph(line.strip(), self.styles["TOCSub"]))
                 elif line.startswith("Chapter "):
-                    story.append(Paragraph(line.strip(), self.styles["TOCChapter"]))
+                    story.append(safe_paragraph(line.strip(), self.styles["TOCChapter"]))
                 elif line.startswith("Hands-On Challenges:"):
-                    story.append(Paragraph(line.strip(), self.styles["TOCSummary"]))
+                    story.append(safe_paragraph(line.strip(), self.styles["TOCSummary"]))
                 elif line.startswith("Deep Dive "):
-                    story.append(Paragraph(line.strip(), self.styles["TOCChapter"]))
+                    story.append(safe_paragraph(line.strip(), self.styles["TOCChapter"]))
                 elif line.startswith("APPENDICES"):
-                    story.append(Paragraph(line.strip(), self.styles["TOCPhase"]))
+                    story.append(safe_paragraph(line.strip(), self.styles["TOCPhase"]))
                 else:
-                    story.append(Paragraph(line.strip(), self.styles["TOCSub"]))
+                    story.append(safe_paragraph(line.strip(), self.styles["TOCSub"]))
                 i += 1
                 continue
 
@@ -927,12 +1048,12 @@ class ReferenceManualBuilder:
             if re.match(r"^(?:#{1,3}\s*)?PART\s+[IVXLCDM\d]+", line, re.IGNORECASE):
                 safe_page_break()
                 part_title = line.lstrip("# ").strip()
-                story.append(Paragraph(part_title, self.styles["TOCPhase"]))
+                story.append(safe_paragraph(part_title, self.styles["TOCPhase"]))
                 i += 1
                 while i < n and (not lines[i].strip() or re.match(r"^[-=_*]{3,}$", lines[i].strip())):
                     i += 1
                 if i < n and re.match(r"^(?:#{1,3}\s*)?PHASE\s+\d+\s*(?:—|-|:)", lines[i], re.IGNORECASE):
-                    story.append(Paragraph(lines[i].lstrip("# ").strip(), self.styles["PhaseHeader"]))
+                    story.append(safe_paragraph(lines[i].lstrip("# ").strip(), self.styles["PhaseHeader"]))
                     story.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_BLACK, spaceBefore=4, spaceAfter=8))
                     i += 1
                 continue
@@ -940,14 +1061,14 @@ class ReferenceManualBuilder:
             # 1. Phase Header (starts on fresh page)
             if re.match(r"^(?:#{1,3}\s*)?PHASE\s+\d+\s*—\s*PRACTICE DRILLS", line, re.IGNORECASE):
                 story.append(Spacer(1, 14))
-                story.append(Paragraph(line.lstrip("# ").strip(), self.styles["PhaseHeader"]))
+                story.append(safe_paragraph(line.lstrip("# ").strip(), self.styles["PhaseHeader"]))
                 story.append(HRFlowable(width="100%", thickness=1.0, color=COLOR_BLACK, spaceBefore=4, spaceAfter=8))
                 i += 1
                 continue
 
             if re.match(r"^(?:#{1,3}\s*)?PHASE\s+\d+\s*(?:—|-|:)", line, re.IGNORECASE):
                 safe_page_break()
-                story.append(Paragraph(line.lstrip("# ").strip(), self.styles["PhaseHeader"]))
+                story.append(safe_paragraph(line.lstrip("# ").strip(), self.styles["PhaseHeader"]))
                 story.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_BLACK, spaceBefore=4, spaceAfter=8))
                 i += 1
                 continue
@@ -955,7 +1076,7 @@ class ReferenceManualBuilder:
             # 2. Appendices Header (starts on fresh page)
             if re.match(r"^(?:#{1,3}\s*)?APPENDICES", line, re.IGNORECASE):
                 safe_page_break()
-                story.append(Paragraph(line.lstrip("# ").strip(), self.styles["PhaseHeader"]))
+                story.append(safe_paragraph(line.lstrip("# ").strip(), self.styles["PhaseHeader"]))
                 story.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_BLACK, spaceBefore=4, spaceAfter=8))
                 i += 1
                 continue
@@ -963,33 +1084,33 @@ class ReferenceManualBuilder:
             # 3. Topics Bar
             if line.startswith("Topics:") or line.startswith("**Topics:**"):
                 topic_text = line.replace("**Topics:**", "").replace("Topics:", "").strip()
-                story.append(Paragraph(f"<b>Topics:</b> {topic_text}", self.styles["TopicsLabel"]))
+                story.append(safe_paragraph(f"<b>Topics:</b> {topic_text}", self.styles["TopicsLabel"]))
                 i += 1
                 continue
 
             # 4. Scope Bar (in Appendices)
             if line.startswith("Scope:"):
                 scope_text = line.replace("Scope:", "").strip()
-                story.append(Paragraph(f"<b>Scope:</b> {scope_text}", self.styles["TopicsLabel"]))
+                story.append(safe_paragraph(f"<b>Scope:</b> {scope_text}", self.styles["TopicsLabel"]))
                 i += 1
                 continue
 
             # 5. Chapter Header
             if re.match(r"^(?:#{2,3}\s*)?Chapter\s+\d+\.\d+", line, re.IGNORECASE) or line.startswith("## Appendix"):
                 ch_title = line.lstrip("# ").strip()
-                story.append(Paragraph(ch_title, self.styles["ChapterHeader"]))
+                story.append(safe_paragraph(ch_title, self.styles["ChapterHeader"]))
                 i += 1
                 continue
 
             # 6. Challenge Header
             if re.match(r"^(?:#{2,3}\s*)?CHALLENGE\s+\d+", line, re.IGNORECASE):
                 ch_title = line.lstrip("# ").strip()
-                story.append(Paragraph(ch_title, self.styles["ChallengeTitle"]))
+                story.append(safe_paragraph(ch_title, self.styles["ChallengeTitle"]))
                 i += 1
                 continue
 
             if "Problem Statement & Requirements:" in line:
-                story.append(Paragraph("<b>Problem Statement & Requirements:</b>", self.styles["ChallengeReq"]))
+                story.append(safe_paragraph("<b>Problem Statement & Requirements:</b>", self.styles["ChallengeReq"]))
                 i += 1
                 continue
 
@@ -998,7 +1119,7 @@ class ReferenceManualBuilder:
                 sec_title = line.lstrip("# ").strip()
                 if "Senior Architect Analysis" in sec_title:
                     safe_page_break()
-                story.append(Paragraph(sec_title, self.styles["SectionHeader"]))
+                story.append(safe_paragraph(sec_title, self.styles["SectionHeader"]))
                 i += 1
                 continue
 
@@ -1066,7 +1187,7 @@ class ReferenceManualBuilder:
                 math_content = line.strip()[2:-2].strip()
                 html_m = latex_to_reportlab_html(math_content)
                 story.append(Spacer(1, 4))
-                story.append(Paragraph(html_m, self.styles["DisplayMath"]))
+                story.append(safe_paragraph(html_m, self.styles["DisplayMath"]))
                 story.append(Spacer(1, 4))
                 i += 1
                 continue
@@ -1105,12 +1226,23 @@ class ReferenceManualBuilder:
             # 10. Bullet Points
             if line.strip().startswith(("• ", "- ", "* ")):
                 bullet_text = line.strip()[2:].strip()
-                story.append(Paragraph(f"• {md_to_reportlab_html(bullet_text)}", self.styles["Bullet"]))
+                story.append(safe_paragraph(f"• {md_to_reportlab_html(bullet_text)}", self.styles["Bullet"]))
                 i += 1
                 continue
 
             # 11. Regular Body Paragraph
-            story.append(Paragraph(md_to_reportlab_html(line.strip()), self.styles["Body"]))
+            # Defense-in-depth: if line has embedded bullets, split into distinct flowables
+            if "\n• " in line or line.startswith("• "):
+                sub_lines = line.split("\n")
+                for sl in sub_lines:
+                    sl_trimmed = sl.strip()
+                    if sl_trimmed.startswith(("• ", "- ", "* ")):
+                        b_text = sl_trimmed[2:].strip()
+                        story.append(safe_paragraph(f"• {md_to_reportlab_html(b_text)}", self.styles["Bullet"]))
+                    elif sl_trimmed:
+                        story.append(safe_paragraph(md_to_reportlab_html(sl_trimmed), self.styles["Body"]))
+            else:
+                story.append(safe_paragraph(md_to_reportlab_html(line.strip()), self.styles["Body"]))
             i += 1
 
         return story

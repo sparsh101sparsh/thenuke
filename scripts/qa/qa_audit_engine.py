@@ -98,6 +98,7 @@ class Pass2TextualResult:
     passed: bool
     error_count: int
     warning_count: int
+    rendering_violations: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -311,12 +312,28 @@ def run_pass2_textual(pdf_path: Path) -> Pass2TextualResult:
         or "Time Limit:" in full_text
     )
 
-    # Error & warning tallies
+    # Rendering Invariants Verification
+    escape_hits = [
+        f"Literal escape artifact '{m.group()}' at pos {m.start()}"
+        for m in re.finditer(r"\\n\s*[-*•]", full_text)
+    ]
+    placeholder_hits = [
+        f"Leaked internal placeholder '{m.group()}' at pos {m.start()}"
+        for m in re.finditer(r"___(?:CODE|MATH|PRE_CODE|CURRENCY|LONE_DOLLAR|ESCAPED_DOLLAR)_PH_\d+___|___[A-Z_]+___", full_text)
+    ]
+    delimiter_hits = [
+        f"Unrendered math delimiter marker '$$$' at pos {m.start()}"
+        for m in re.finditer(r"\$\$\$", full_text)
+    ]
+    rendering_hits = escape_hits + placeholder_hits + delimiter_hits
+
     errors = 0
     warnings = 0
 
     if devanagari_hits:
         errors += len(devanagari_hits)
+    if rendering_hits:
+        errors += len(rendering_hits)
     if not has_syllabus and not is_cp_problem:
         errors += 1
     if not is_cp_problem:
@@ -338,6 +355,7 @@ def run_pass2_textual(pdf_path: Path) -> Pass2TextualResult:
         passed=(errors == 0),
         error_count=errors,
         warning_count=warnings,
+        rendering_violations=rendering_hits[:20],
     )
 
 
