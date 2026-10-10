@@ -55,8 +55,11 @@ class MultiAgentOrchestrator:
             }
 
         # Step 1: Architect Agent plans the curriculum contract
-        logger.info("[Agent 1: Architect] Planning 9-phase syllabus and diagram slot contracts...")
-        syllabus = self.architect.plan_curriculum(profile)
+        logger.info(f"[Agent 1: Architect] Planning syllabus and diagram slot contracts for '{self.topic}'...")
+        if self.topic.strip().lower() == "git":
+            syllabus = self.architect.plan_curriculum(profile)
+        else:
+            syllabus = self.architect.plan_universal_curriculum(profile)
         logger.info(f"[Agent 1: Architect] Syllabus contracted: {len(syllabus.phases)} phases, {len(syllabus.diagram_slots)} diagram slots.")
 
         # Step 2: Diagram Agent validates registered vector diagrams
@@ -74,7 +77,11 @@ class MultiAgentOrchestrator:
 
         # Step 4: Adversarial Reviewer audits the markdown source
         logger.info("[Agent 4: Reviewer] Pre-compilation adversarial audit on markdown source...")
-        md_ok, md_issues = self.reviewer.audit_markdown_source(full_md)
+        md_ok, md_issues = self.reviewer.audit_markdown_source(
+            full_md,
+            topic=self.topic,
+            expected_phases=len(syllabus.phases),
+        )
         if not md_ok:
             logger.warning(f"[Agent 4: Reviewer] Pre-compilation issues: {md_issues}")
 
@@ -87,7 +94,11 @@ class MultiAgentOrchestrator:
 
         # Step 6: Adversarial Reviewer executes 4-Pass QA gate on compiled PDF
         logger.info("[Agent 4: Reviewer] Running 4-Pass Automated QA Gate on compiled PDF...")
-        report = self.reviewer.audit_compiled_pdf(compiled_path)
+        report = self.reviewer.audit_compiled_pdf(
+            compiled_path,
+            topic=self.topic,
+            expected_phases=len(syllabus.phases),
+        )
         logger.info(
             f"[Agent 4: Reviewer] Audit Complete: Pass1={report.pass_1_layout_clean}, "
             f"Pass2(0% Devanagari)={report.pass_2_zero_devanagari}, "

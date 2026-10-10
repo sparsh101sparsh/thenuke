@@ -82,6 +82,10 @@ Modern technical documentation generation suffers from a fundamental impedance m
 | **FAANG 3-Part Drills** | Output Prediction, Algorithm Utility, Industrial Mini-Project per phase | Zero-dependency ES2024+ implementations with strict Big-O performance boundaries |
 | **Monochrome Vector Identity** | Minimalist high-contrast ISO A4 palette (`#000000`, `#222222`, `#CCCCCC`, `#F8F8F8`) | Focused, fatigue-free reading layout optimized for print and high-DPI displays |
 | **Author Branding** | Cover poster & running footers: `Prepared by @issparsh @sumitsingh097` with official 𝕏 glyph | Immutable vector logo attribution embedded natively on every page |
+| **Universal Domain Agnosticism** | Arbitrary $N$ phases (4, 6, 8, 12, etc.) for ANY domain (CS, English, Economics, Systems) | Domain-neutral architect and writer generating full production manuals beyond fixed topics |
+| **Dynamic 100 Quotes Library** | Hand-curated library across 8 disciplines (Turing, Knuth, Dijkstra, Feynman, etc.) | Context-aware quote selection dynamically integrated into cover metadata |
+| **Non-Overlapping Running Footers** | Two-column boundary pinning ($x=54.0$ pt left, $x=541.28$ pt right) | Mathematically guarantees zero text collisions (>150 pt clear gutter) on every single page |
+| **Git Binary Security** | Absolute exclusion of PDF binaries via root and workspace `.gitignore` | Repositories remain clean, fast, and 100% focused on reproducible source code |
 | **Dual-Pass Visual QA** | Pass 1: 150 DPI rasterization layout audit; Pass 2: Textual regex compliance audit | Automated CI/CD gate preventing malformed PDFs from release |
 | **Post-Clearance Cleanup** | Automated multi-GB purge of intermediate videos, audio, frames, and scraper caches | Zero persistent disk clutter after manual verification |
 

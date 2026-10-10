@@ -41,6 +41,7 @@ from reportlab.platypus import (
 )
 
 from scripts.diagramming.vector_diagrams import get_diagram
+from scripts.quotes.quote_library import get_quote
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +112,7 @@ class PublicationCanvas(canvas.Canvas):
         super().__init__(*args, **kwargs)
         self._saved_page_states: List[Dict[str, Any]] = []
         self.doc_title = "Git: The Complete Reference Manual"
-        self.edition_label = "High-Performance Engineering Manual • Monochrome Edition"
+        self.edition_label = "Monochrome Reference Edition"
         self.author_branding = "Prepared by @issparsh @sumitsingh097"
 
     def showPage(self):
@@ -162,20 +163,20 @@ class PublicationCanvas(canvas.Canvas):
         # 3. Bottom hairline dividing rule
         self.line(54.0, 46.0, PAGE_WIDTH - 54.0, 46.0)
 
-        # 4. Bottom footer: Left page count
-        self.drawString(54.0, 32.0, f"Page {pno} of {total_pages}")
+        # 4. Bottom footer: Left page count and edition label
+        footer_left = f"Page {pno} of {total_pages}  •  {self.edition_label}"
+        self.drawString(54.0, 32.0, footer_left)
 
-        # 5. Bottom footer: Right edition label
-        self.drawRightString(PAGE_WIDTH - 54.0, 32.0, self.edition_label)
-
-        # 6. Bottom footer: Center author branding with official vector X logo
+        # 5. Bottom footer: Right author branding with official vector X logo (pinned to right margin, zero collision)
         branding_text = self.author_branding
         bw = self.stringWidth(branding_text, "Helvetica", 8)
-        total_brand_w = bw + 12.0
-        start_x = (PAGE_WIDTH - total_brand_w) / 2.0
+        logo_size = 7.0
+        logo_pad = 4.0
+        total_brand_w = bw + logo_pad + logo_size
+        start_x = (PAGE_WIDTH - 54.0) - total_brand_w
 
         self.drawString(start_x, 32.0, branding_text)
-        self._draw_x_logo(start_x + bw + 4.0, 32.0, size=7.0)
+        self._draw_x_logo(start_x + bw + logo_pad, 32.0, size=logo_size)
 
         self.restoreState()
 
@@ -405,7 +406,14 @@ class ReferenceManualBuilder:
 
         return styles
 
-    def build_cover_page(self, topic_name: str) -> List[Any]:
+    def build_cover_page(
+        self,
+        topic_name: str,
+        num_phases: int = 9,
+        num_drills: int = 27,
+        capstone_title: str = "",
+        custom_quote: Optional[Tuple[str, str]] = None,
+    ) -> List[Any]:
         """Constructs cover page flowables matching reference manual."""
         story = []
         story.append(Spacer(1, 40))
@@ -416,14 +424,16 @@ class ReferenceManualBuilder:
 
         # Description
         desc_text = (
-            f"A rigorous, comprehensive, ground-up reference manual designed for software engineers who want to "
-            f"master {topic_name} from the bare internal architecture and object database to advanced branching, "
-            f"history rewriting, three-way merge resolution algorithms, and enterprise production workflows."
+            f"A rigorous, comprehensive, ground-up reference manual designed for software engineers and learners who want to "
+            f"master {topic_name} from core architectural foundations to advanced enterprise methodologies, "
+            f"invariants, and verified hands-on drills."
         )
         story.append(Paragraph(desc_text, self.styles["CoverDesc"]))
         story.append(Spacer(1, 15))
 
-        # Metadata Table
+        # Dynamic Metadata Table
+        arch_label = f"{num_phases} Phases + {num_drills} Production Drills + Comprehensive Deep Dives"
+        capstone_label = capstone_title or f"Zero-Dependency {topic_name} Production Engine Architecture"
         meta_data = [
             [
                 Paragraph("Curriculum Edition:", self.styles["CoverMetaLabel"]),
@@ -439,11 +449,11 @@ class ReferenceManualBuilder:
             ],
             [
                 Paragraph("Architecture:", self.styles["CoverMetaLabel"]),
-                Paragraph("9 Phases + 27 Production Drills + 3 Deep Dives", self.styles["CoverMetaVal"]),
+                Paragraph(arch_label, self.styles["CoverMetaVal"]),
             ],
             [
                 Paragraph("Capstone Project:", self.styles["CoverMetaLabel"]),
-                Paragraph("Zero-Dependency Mini-Engine CLI Architecture (pygit)", self.styles["CoverMetaVal"]),
+                Paragraph(capstone_label, self.styles["CoverMetaVal"]),
             ],
             [
                 Paragraph("Author Branding:", self.styles["CoverMetaLabel"]),
@@ -467,12 +477,14 @@ class ReferenceManualBuilder:
         story.append(t)
         story.append(Spacer(1, 35))
 
-        # Quote Box
-        quote_p = Paragraph(
-            '"Any fool can write code that a computer can understand. Good<br/>'
-            'programmers write code that humans can understand." — Martin Fowler',
-            self.styles["CoverQuote"],
-        )
+        # Dynamic Quote Box from 100-Quotes Library
+        if custom_quote:
+            q_text, q_author = custom_quote
+        else:
+            q_text, q_author = get_quote(topic=topic_name)
+
+        quote_html = f'"{q_text}" — <b>{q_author}</b>'
+        quote_p = Paragraph(quote_html, self.styles["CoverQuote"])
         qt = Table([[quote_p]], colWidths=[CONTENT_WIDTH])
         qt.setStyle(
             TableStyle([
@@ -592,7 +604,9 @@ class ReferenceManualBuilder:
                 title_line = line.lstrip("# ").strip()
                 if ":" in title_line:
                     topic_name = title_line.split(":")[0].strip()
-                story.extend(self.build_cover_page(topic_name))
+                detected_phases = len(set(re.findall(r"^PHASE\s+(\d+)", md_text, re.MULTILINE))) or 9
+                detected_drills = len(re.findall(r"CHALLENGE\s+\d+", md_text, re.IGNORECASE)) or 27
+                story.extend(self.build_cover_page(topic_name, num_phases=detected_phases, num_drills=detected_drills))
                 i += 1
                 # Skip cover subtitle, branding, and dividers so they don't leak onto Page 2
                 while i < n and "DETAILED SYLLABUS" not in lines[i]:

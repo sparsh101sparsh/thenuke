@@ -133,6 +133,27 @@ python thenuke_cli.py clean
 | Body Text | Helvetica Regular | 8.5 pt / 11.5 pt leading | #222222 |
 | Code | Courier | 7.5 pt / 9.5 pt leading | #444444 |
 
+### Layout Geometry & Running Footers
+- **Two-Column Boundary Pinning (Zero Overlap Invariant):**
+  - **Left Margin ($x = 54.0\text{ pt}$):** Running page count and edition title: `Page {pno} of {total_pages} • Monochrome Reference Edition`.
+  - **Right Margin ($x = 541.28\text{ pt}$):** Official author branding and vector 𝕏 glyph: `Prepared by @issparsh @sumitsingh097 𝕏`.
+  - **Gutter:** Strict minimum $>150\text{ pt}$ clearance between strings. Text overlap is strictly prohibited across all pages.
+- **Header Line:** Subtle 0.5 pt hairline at $y = 800\text{ pt}$ with uppercase running title and dynamic chapter tracker.
+
+### Dynamic 100 Quotes Library
+- Hand-curated library of 100 foundational quotes from legendary computing, engineering, philosophy, and polymath figures (Alan Turing, Donald Knuth, Edsger Dijkstra, Richard Feynman, Grace Hopper, Ada Lovelace, Fred Brooks, Leslie Lamport, Ludwig Wittgenstein, Claude Shannon, Albert Einstein, Leonardo da Vinci, Seneca, Marcus Aurelius, etc.).
+- Tagged across 8 core domains (`systems`, `software_engineering`, `algorithms`, `debugging`, `curiosity`, `simplicity`, `learning`, `mastery`).
+- Cover pages dynamically fetch quotes via `get_quote(topic=..., seed=...)` ensuring each manual receives an authoritative, contextual quote.
+
+### Universal Domain Curricula & Unconstrained Phase Allocation
+- **Universal Agnostic Architecture:** Capable of generating reference manuals for ANY topic (Computer Science, English Learning, Economics, Physics, Distributed Systems, Compilers, etc.).
+- **Unconstrained Phase Count ($N$ Phases):** Never restricted to a fixed 9-phase model. Supports 4, 6, 8, 12, or arbitrary $N$ phases based on depth and topic needs.
+- **Dynamic Syllabus Chunking:** Table of contents partitions phases into clean roman-numeral parts (`PART I`, `PART II`, etc.) with automatic page budgeting.
+
+### Git Artifact Security & Repository Policy
+- **ZERO PDF Binaries in Git:** All `.gitignore` configurations enforce `*.pdf`, `output/`, and `scratch/`. PDFs are strictly local artifacts generated to `~/Downloads/` or `~/thenuke_workspace/output/`.
+- Repositories store 100% clean, reproducible source code, vector drawing engines, test suites, and documentation.
+
 ## Grilling Presets
 
 | Preset | Level | Visual | Audience |

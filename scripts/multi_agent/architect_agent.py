@@ -54,6 +54,9 @@ class ArchitectAgent:
 
     def plan_curriculum(self, profile: Dict[str, Any]) -> SyllabusContract:
         """Plans the curriculum contract according to grilling preferences."""
+        if self.topic.strip().lower() != "git":
+            return self.plan_universal_curriculum(profile)
+
         level_of_detail = profile.get("level_of_detail", "senior_architect")
         diagram_dense = profile.get("visual_threshold", "diagram_dense") == "diagram_dense"
 
@@ -416,4 +419,308 @@ class ArchitectAgent:
             phases=phases,
             appendices=appendices,
             diagram_slots=diagram_slots,
+        )
+
+    def plan_universal_curriculum(self, profile: Dict[str, Any]) -> SyllabusContract:
+        """Dynamically designs an unconstrained, multi-phase curriculum for ANY domain or topic."""
+        topic_clean = self.topic.strip()
+        num_phases = int(profile.get("num_phases", 8))
+        if num_phases < 2:
+            num_phases = 6
+
+        if any(k in topic_clean.lower() for k in ["english", "language", "grammar", "spoken"]):
+            return self._plan_english_curriculum(profile)
+
+        phase_templates = [
+            (
+                "FOUNDATIONS, TAXONOMY & FIRST PRINCIPLES",
+                "Epistemological roots, foundational nomenclature, and core mental models.",
+                [
+                    ("First Principles & Core Definition", "Defining the domain, taxonomy, and mental model baseline."),
+                    ("Historical Evolution & Paradigm Shifts", "Why legacy approaches failed and modern systems emerged."),
+                    ("Core Axioms & Foundational Laws", "The unbendable rules and architectural primitives of the domain."),
+                    ("Operational Environment & Tooling Baseline", "Setting up diagnostic environments, tooling, and verification."),
+                ],
+            ),
+            (
+                "PRIMITIVE UNITS & COMPONENT MECHANICS",
+                "Low-level building blocks, structural units, and atomic behaviors.",
+                [
+                    ("Atomic Units & Data Structures", "Deconstructing fundamental building blocks and representations."),
+                    ("State Lifecycle & Mutation Semantics", "How state transitions from transient to persistent form."),
+                    ("Invariants & Verification Rules", "Enforcing correctness, boundary conditions, and validation."),
+                    ("Component Composition & Interface Design", "Connecting atomic units into coherent operational nodes."),
+                ],
+            ),
+            (
+                "INTERMEDIATE PATTERNS & DATA FLOWS",
+                "Structural coordination, pipeline flows, and synchronization mechanics.",
+                [
+                    ("Pipelines & Data Transformation Flow", "Tracing throughput across intermediate processing layers."),
+                    ("Concurrency, Isolation & Conflict Resolution", "Managing concurrent operations, locking, and arbitration."),
+                    ("Modular Architecture & Loose Coupling", "Partitioning systems into maintainable, autonomous modules."),
+                    ("Error Handling & Fault Recovery", "Graceful degradation, retries, and invariant restoration."),
+                ],
+            ),
+            (
+                "ADVANCED INTERNALS & DEEP MECHANICS",
+                "Low-level implementation engines, memory models, and execution details.",
+                [
+                    ("The Core Engine Under The Hood", "Stepping through internal execution pipelines line-by-line."),
+                    ("Memory Layout, Optimization & Latency", "Physical layout, caching behavior, and latency reduction."),
+                    ("Asynchronous Operations & Scheduling", "Event loops, dispatchers, and asynchronous state machines."),
+                    ("Security Boundaries & Defensive Invariants", "Hardening interfaces against corruption, leaks, and exploits."),
+                ],
+            ),
+            (
+                "EDGE CASES, ANOMALIES & FAILURE POSTMORTEMS",
+                "Dissecting complex failure modes, edge cases, and emergency recovery.",
+                [
+                    ("Failure Modes & Diagnostic Telemetry", "Recognizing silent data corruption and edge anomalies."),
+                    ("High-Stakes Postmortems & Root Cause Analysis", "Real-world incident breakdowns and forensic recovery."),
+                    ("Surgical Remediation & Rollback Strategies", "Safely unrolling catastrophic state mutations."),
+                    ("Stress Testing & Resilience Benchmarks", "Validating system integrity under extreme adversarial loads."),
+                ],
+            ),
+            (
+                "ENTERPRISE PRODUCTION & ECOSYSTEM INTEGRATION",
+                "Scaling, collaboration, monitoring, and industrial best practices.",
+                [
+                    ("Enterprise Architecture & Team Conventions", "Standardizing workflows, styling, and architectural rules."),
+                    ("Automated Verification & Continuous Integration", "Building automated quality gates and verification suites."),
+                    ("Monitoring, Observability & Performance Profiling", "Tracking production metrics, bottlenecks, and KPIs."),
+                    ("Ecosystem Tooling, Automation & Extensions", "Leveraging modern CLI tooling and automation extensions."),
+                ],
+            ),
+            (
+                "PERFORMANCE TUNING & ADVANCED METAPROGRAMMING",
+                "Extreme optimization, dynamic adaptation, and expert techniques.",
+                [
+                    ("Profiling Bottlenecks & Algorithmic Refinement", "Identifying critical paths and eliminating hot spots."),
+                    ("Metaprogramming & Dynamic Code Synthesis", "Introspection, code generation, and declarative paradigms."),
+                    ("Distributed Scaling & High-Availability Topology", "Scaling across heterogeneous nodes and multi-region clusters."),
+                    ("Zero-Dependency Architectural Blueprints", "Building production-grade engines without third-party dependencies."),
+                ],
+            ),
+            (
+                "INDUSTRIAL CAPSTONE ENGINE & PRODUCTION IMPLEMENTATION",
+                "End-to-end full-scale implementation of an enterprise production system.",
+                [
+                    ("System Architecture Specification & Blueprint", "Defining the formal specification, contracts, and schema."),
+                    ("Core Engine Implementation From Scratch", "Writing the end-to-end working production engine in pure code."),
+                    ("Industrial Verification & Integration Gauntlet", "Running full test suites, stress testing, and edge validation."),
+                    ("Deployment, Operation & Long-Term Maintenance", "Production deployment, migration runbooks, and SLA compliance."),
+                ],
+            ),
+        ]
+
+        phases: List[PhaseContract] = []
+        for p_idx in range(num_phases):
+            tmpl_idx = p_idx % len(phase_templates)
+            p_title, p_sub, ch_list = phase_templates[tmpl_idx]
+            actual_pno = p_idx + 1
+            if p_idx >= len(phase_templates):
+                p_title = f"{p_title} (ADVANCED MODULE {p_idx - len(phase_templates) + 2})"
+
+            chapters: List[ChapterContract] = []
+            for ch_idx, (ch_title, ch_sub) in enumerate(ch_list):
+                ch_num = f"{actual_pno}.{ch_idx + 1}"
+                chapters.append(
+                    ChapterContract(
+                        chapter_num=ch_num,
+                        title=f"{topic_clean}: {ch_title}",
+                        subheading=ch_sub,
+                        topics=[f"{topic_clean} {ch_title.split()[0]}", "Invariants", "Architecture"],
+                        drill_ids=[ch_idx + 1] if ch_idx < 3 else [],
+                    )
+                )
+
+            phases.append(
+                PhaseContract(
+                    phase_num=actual_pno,
+                    title=f"{topic_clean.upper()} — {p_title}",
+                    subtitle=p_sub,
+                    topics_summary=f"{topic_clean} Core Mechanics, Invariants, Architecture, Industrial Drills",
+                    chapters=chapters,
+                    challenges_count=3,
+                )
+            )
+
+        appendices = [
+            {
+                "letter": "A",
+                "title": f"{topic_clean} Formal Axioms & Invariant Reference Guide",
+                "scope": f"Complete mathematical/algorithmic invariants and rule sets governing {topic_clean}.",
+            },
+            {
+                "letter": "B",
+                "title": f"{topic_clean} Enterprise Incident Postmortems & Disaster Recovery",
+                "scope": f"Real-world production failures in {topic_clean} and surgical resolution playbooks.",
+            },
+            {
+                "letter": "C",
+                "title": f"{topic_clean} 30 Industrial FAANG Machine-Coding Gauntlet",
+                "scope": f"High-difficulty algorithmic and architectural challenges with complete verified solutions.",
+            },
+        ]
+
+        return SyllabusContract(
+            topic=topic_clean,
+            edition_title=f"{topic_clean}: The Complete Reference Manual • Monochrome Edition",
+            phases=phases,
+            appendices=appendices,
+            diagram_slots=[],
+        )
+
+    def _plan_english_curriculum(self, profile: Dict[str, Any]) -> SyllabusContract:
+        """Specialized high-density curriculum for English Language & Communication Mastery."""
+        phases_data = [
+            (
+                1,
+                "PHONETICS, PRONUNCIATION & IPA ACOUSTICS",
+                "Speech sound mechanics, vowel trapeze, plosives, and International Phonetic Alphabet.",
+                "IPA Vowels, Diphthongs, Plosives, Syllable Stress, Intonation Contours",
+                [
+                    ("1.1", "International Phonetic Alphabet (IPA) Foundations", "Acoustic Articulation & Vowel Trapeze"),
+                    ("1.2", "Consonant Articulation Mechanics", "Plosives, Fricatives, Affricates, and Nasals"),
+                    ("1.3", "Word Stress & Syllabic Weight", "Primary Stress, Secondary Stress, and Reduced Vowels (Schwa)"),
+                    ("1.4", "Connected Speech & Sandhi Phenomena", "Elision, Linking /r/, Glottal Stops, and Assimilation"),
+                ],
+            ),
+            (
+                2,
+                "MORPHOLOGICAL SYNTAX & PARTS OF SPEECH",
+                "Derivational morphology, noun phrases, determiners, and adjective ordering.",
+                "Morphemes, Affixes, Countable vs Uncountable, Determiners, Royal Order of Adjectives",
+                [
+                    ("2.1", "Root Morphemes & Affixation", "Prefixes, Suffixes, and Semantic Derivations"),
+                    ("2.2", "Noun Classification & Mass Invariants", "Countable, Uncountable, and Collective Noun Dynamics"),
+                    ("2.3", "The Determiner Hierarchy", "Articles (a/an/the), Quantifiers, and Demonstratives"),
+                    ("2.4", "The Royal Order of Adjectives", "Opinion, Size, Physical Quality, Shape, Age, Color, Origin, Material"),
+                ],
+            ),
+            (
+                3,
+                "TENSE SYSTEMS & TEMPORAL ASPECT INVARIANTS",
+                "The 12 English tenses, aspectual distinctions, and temporal anchoring.",
+                "Simple, Continuous, Perfect, Perfect Continuous, State vs Dynamic Verbs",
+                [
+                    ("3.1", "The Aspect Matrix: Simple vs Continuous", "Habitual Truths vs In-Progress Dynamic States"),
+                    ("3.2", "The Perfect Aspect: Past In Action", "Present Perfect Anteriority vs Simple Past Definitive Anchoring"),
+                    ("3.3", "Past Perfect & Narrative Sequencing", "Had + V3 Anterior Ordering in Complex Narrative Clauses"),
+                    ("3.4", "Future Modality & Stative Invariants", "Will vs Going to vs Present Continuous, Non-Continuous Stative Verbs"),
+                ],
+            ),
+            (
+                4,
+                "MODAL AUXILIARIES & CONDITIONAL TOPOLOGY",
+                "Epistemic vs deontic modality, zero to mixed conditionals, and hypothetical logic.",
+                "Epistemic Modals, Deontic Modals, Zero/First/Second/Third/Mixed Conditionals",
+                [
+                    ("4.1", "Deontic Modals: Obligation & Permission", "Must vs Have to vs Should vs Ought to"),
+                    ("4.2", "Epistemic Modals: Probability & Deduction", "Must be vs Can't be vs Might have been"),
+                    ("4.3", "Standard Conditionals (0, 1, 2, 3)", "Real vs Unreal Hypothetical Topology"),
+                    ("4.4", "Mixed Conditionals & Inverted Conditionals", "Had I known vs Were you to consider"),
+                ],
+            ),
+            (
+                5,
+                "CLAUSE HIERARCHIES, COORDINATION & SUBORDINATION",
+                "Sentence architecture, relative clauses, participial phrases, and punctuation.",
+                "Independent Clauses, Subordinate Clauses, Restrictive vs Non-Restrictive, Oxford Comma",
+                [
+                    ("5.1", "Complex Sentence Architecture", "Subordinating Conjunctions and Dependent Clause Attachment"),
+                    ("5.2", "Relative Clauses: Restrictive vs Non-Restrictive", "That vs Which, Punctuation Invariants"),
+                    ("5.3", "Participial Phrases & Dangling Modifiers", "Present/Past Participles and Dangling Modifier Traps"),
+                    ("5.4", "Inversion & Fronting for Rhetorical Focus", "Never had I seen, Seldom do we witness"),
+                ],
+            ),
+            (
+                6,
+                "IDIOMATIC PHRASAL VERBS & COLLOCATIONS",
+                "Particle semantics, separable vs inseparable phrasal verbs, and collocations.",
+                "Transitive Phrasal Verbs, Particle Movement, Strong Collocations, Fixed Idioms",
+                [
+                    ("6.1", "The Semantic Logic of Prepositional Particles", "Up, Down, Out, Off, Over Metaphorical Vectors"),
+                    ("6.2", "Separable vs Inseparable Transitive Phrasal Verbs", "Turn down the offer vs Turn it down"),
+                    ("6.3", "High-Value Academic & Business Collocations", "Make vs Do, Bitterly disappointed vs Vitally important"),
+                    ("6.4", "Idiomatic Precision in Executive Contexts", "Cutting corners, Biting the bullet, Moving the needle"),
+                ],
+            ),
+            (
+                7,
+                "ADVANCED RHETORIC, COHESION & DISCOURSE",
+                "Paragraph architecture, signposting, lexical cohesion, and style registers.",
+                "Topic Sentences, Transition Markers, Lexical Cohesion, Active vs Passive Voice",
+                [
+                    ("7.1", "Macro-Structure: Topic Sentences & Paragraph Unity", "PEEL Framework (Point, Evidence, Explanation, Link)"),
+                    ("7.2", "Cohesive Devices & Signposting", "Furthermore, In stark contrast, Consequently, Notwithstanding"),
+                    ("7.3", "Strategic Passive Voice & Nominalization", "Objective Scientific Register vs Active Narrative Pacing"),
+                    ("7.4", "Eliminating Redundancy & Cognitive Fluff", "Strunk & White Principles: Vigorous, Concise Expression"),
+                ],
+            ),
+            (
+                8,
+                "EXECUTIVE COMMUNICATION & NEGOTIATION PRAGMATICS",
+                "Cross-cultural pragmatics, diplomatic hedging, persuasive rhetoric, and speeches.",
+                "Diplomatic Hedging, Escalation Protocols, Persuasive Rhetoric, Q&A Mastery",
+                [
+                    ("8.1", "Diplomatic Hedging & Softening Directives", "Could we possibly consider vs It would seem that"),
+                    ("8.2", "Handling Disagreements & Constructive Pushback", "I see your point, however vs With all due respect"),
+                    ("8.3", "The Rhetoric of Persuasion: Ethos, Pathos, Logos", "Structuring High-Stakes Pitches and Executive Briefings"),
+                    ("8.4", "Spontaneous Impromptu Speaking & Frameworks", "PREP (Point, Reason, Example, Point) Framework"),
+                ],
+            ),
+        ]
+        requested_phases = int(profile.get("num_phases", len(phases_data)))
+        if 2 <= requested_phases < len(phases_data):
+            phases_data = phases_data[:requested_phases]
+
+        phases: List[PhaseContract] = []
+        for pno, title, sub, topics_sum, chs in phases_data:
+            chapter_contracts = [
+                ChapterContract(
+                    chapter_num=c_num,
+                    title=c_title,
+                    subheading=c_sub,
+                    topics=["English Mechanics", "Syntax", "Pronunciation", "Rhetoric"],
+                    drill_ids=[idx + 1] if idx < 3 else [],
+                )
+                for idx, (c_num, c_title, c_sub) in enumerate(chs)
+            ]
+            phases.append(
+                PhaseContract(
+                    phase_num=pno,
+                    title=f"ENGLISH MASTERY — {title}",
+                    subtitle=sub,
+                    topics_summary=topics_sum,
+                    chapters=chapter_contracts,
+                    challenges_count=3,
+                )
+            )
+
+        appendices = [
+            {
+                "letter": "A",
+                "title": "International Phonetic Alphabet (IPA) Complete Articulation Reference",
+                "scope": "Acoustic chart of 44 English phonemes, vowel formant frequencies, and consonant voicing.",
+            },
+            {
+                "letter": "B",
+                "title": "Comprehensive Irregular Verb Morphology & Historical Ablaut Classes",
+                "scope": "200+ irregular verb principal parts categorized by historical Germanic ablaut vowel changes.",
+            },
+            {
+                "letter": "C",
+                "title": "Executive Rhetoric & 500 High-Leverage Academic Collocations",
+                "scope": "Formal register collocation dictionary for boardroom, legal, and academic publications.",
+            },
+        ]
+
+        return SyllabusContract(
+            topic="English Language & Communication Mastery",
+            edition_title="English: The Complete Reference Manual • Monochrome Edition",
+            phases=phases,
+            appendices=appendices,
+            diagram_slots=[],
         )
