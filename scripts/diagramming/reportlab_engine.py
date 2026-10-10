@@ -71,6 +71,16 @@ LATEX_N_MACROS = {
     "newcommand", "newenvironment", "null"
 }
 
+VALID_HTML_ENTITIES_RE = re.compile(
+    r"&(?!(?:amp|lt|gt|quot|apos|"
+    r"le|ge|ne|equiv|middot|times|plusmn|minus|divide|"
+    r"isin|notin|sub|sube|sup|supe|cup|cap|empty|"
+    r"asymp|sim|infin|Sigma|Pi|forall|exist|"
+    r"alpha|beta|gamma|lambda|pi|theta|sigma|"
+    r"radic|rArr|rarr|larr|hArr|bull|and|or|not|"
+    r"#\d+|#x[0-9a-fA-F]+);)"
+)
+
 
 def normalize_and_sanitize_markdown(text: str) -> str:
     """Pre-flight normalization and defense against escape artifacts and broken delimiters."""
@@ -108,7 +118,10 @@ def normalize_and_sanitize_markdown(text: str) -> str:
     # Step 4: Convert ASCII tab characters to 4 spaces
     text = text.replace("\t", "    ")
 
-    # Step 5: Restore inline code
+    # Step 5: Convert raw escaped percent symbols
+    text = text.replace(r"\%", "%")
+
+    # Step 6: Restore inline code
     for idx, c in enumerate(codes):
         text = text.replace(f"___PRE_CODE_PH_{idx}___", c)
 
@@ -118,11 +131,7 @@ def normalize_and_sanitize_markdown(text: str) -> str:
 def emergency_xml_repair(text: str) -> str:
     """Repairs broken XML tags, unescaped ampersands/brackets, and unclosed tags for ReportLab Paragraphs."""
     # 1. Escape bare ampersands
-    text = re.sub(
-        r"&(?!(?:amp|lt|gt|quot|le|ge|ne|middot|times|plusmn|isin|notin|asymp|infin|Sigma|Pi|alpha|beta|gamma|lambda|pi|theta|sigma|radic|minus|equiv|#\d+|#x[0-9a-fA-F]+);)",
-        "&amp;",
-        text,
-    )
+    text = VALID_HTML_ENTITIES_RE.sub("&amp;", text)
     # 2. Escape all < and > that are not strictly valid paired ReportLab tags
     text = re.sub(r"<(?!(?:/?(?:b|i|font(?:\s+[^>]+)?|super|sub)\b|br\s*/?>))", "&lt;", text)
 
@@ -183,13 +192,33 @@ def latex_to_reportlab_html(tex: str) -> str:
     if not t:
         return ""
 
-    # Escape XML characters in raw LaTeX first
+    # Pre-sanitize LaTeX text escapes and escaped symbols
+    t = re.sub(r"\\text\{\\textasciicircum\}|\\textasciicircum", "^", t)
+    t = re.sub(r"\\text\{\\textasciitilde\}|\\textasciitilde", "~", t)
+    t = re.sub(r"\\%", "%", t)
+    t = re.sub(r"\\&", "&amp;", t)
+    t = re.sub(r"\\_", "_", t)
+    t = re.sub(r"\\#", "#", t)
+    t = re.sub(r"\\\$", "$", t)
+
+    # Escape XML characters in raw LaTeX
     t = t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
     # Fractions and square roots
     for _ in range(3):
         t = re.sub(r"\\frac\{([^{}]+)\}\{([^{}]+)\}", r"(\1 / \2)", t)
         t = re.sub(r"\\sqrt\{([^{}]+)\}", r"&radic;(\1)", t)
+
+    # Floor and Ceiling functions
+    # In ReportLab Helvetica Type 1 font, Unicode \u230a and \u230b lack glyphs (rendering as black squares).
+    # We cleanly translate to standard mathematical floor(...) and ceil(...) notation.
+    for _ in range(3):
+        t = re.sub(r"(?:\\left\s*)?\\lfloor\s*(.*?)\s*(?:\\right\s*)?\\rfloor", r"floor(\1)", t)
+        t = re.sub(r"(?:\\left\s*)?\\lceil\s*(.*?)\s*(?:\\right\s*)?\\rceil", r"ceil(\1)", t)
+    t = re.sub(r"(?:\\left\s*)?\\lfloor", "floor(", t)
+    t = re.sub(r"(?:\\right\s*)?\\rfloor", ")", t)
+    t = re.sub(r"(?:\\left\s*)?\\lceil", "ceil(", t)
+    t = re.sub(r"(?:\\right\s*)?\\rceil", ")", t)
 
     # Mathematical symbols and operators
     replacements = [
@@ -201,8 +230,23 @@ def latex_to_reportlab_html(tex: str) -> str:
         (r"\\times(?![a-zA-Z])", "&times;"),
         (r"\\pm(?![a-zA-Z])", "&plusmn;"),
         (r"\\mp(?![a-zA-Z])", "&#8723;"),
+        (r"\\div(?![a-zA-Z])", "&divide;"),
         (r"\\in(?![a-zA-Z])", "&isin;"),
         (r"\\notin(?![a-zA-Z])", "&notin;"),
+        (r"\\subset(?![a-zA-Z])", "&sub;"),
+        (r"\\subseteq(?![a-zA-Z])", "&sube;"),
+        (r"\\supset(?![a-zA-Z])", "&sup;"),
+        (r"\\supseteq(?![a-zA-Z])", "&supe;"),
+        (r"\\cup(?![a-zA-Z])", "&cup;"),
+        (r"\\cap(?![a-zA-Z])", "&cap;"),
+        (r"\\mid(?![a-zA-Z])", "|"),
+        (r"\\nmid(?![a-zA-Z])", "&#8740;"),
+        (r"\\ast(?![a-zA-Z])|\\star(?![a-zA-Z])", "*"),
+        (r"\\circ(?![a-zA-Z])", "&#9702;"),
+        (r"\\bullet(?![a-zA-Z])", "&bull;"),
+        (r"\\forall(?![a-zA-Z])", "&forall;"),
+        (r"\\exists(?![a-zA-Z])", "&exist;"),
+        (r"\\empty(?![a-zA-Z])|\\emptyset(?![a-zA-Z])|\\varnothing(?![a-zA-Z])", "&empty;"),
         (r"\\approx(?![a-zA-Z])", "&asymp;"),
         (r"\\sim(?![a-zA-Z])", "~"),
         (r"\\infty(?![a-zA-Z])", "&infin;"),
@@ -222,15 +266,20 @@ def latex_to_reportlab_html(tex: str) -> str:
         (r"\\pi(?![a-zA-Z])", "&pi;"),
         (r"\\theta(?![a-zA-Z])", "&theta;"),
         (r"\\sigma(?![a-zA-Z])", "&sigma;"),
+        (r"\\land(?![a-zA-Z])|\\wedge(?![a-zA-Z])", "&and;"),
+        (r"\\lor(?![a-zA-Z])|\\vee(?![a-zA-Z])", "&or;"),
+        (r"\\neg(?![a-zA-Z])", "&not;"),
         (r"\\pmod\{([^{}]+)\}", r"(mod \1)"),
         (r"\\pmod\s+([a-zA-Z0-9]+)", r"(mod \1)"),
         (r"\\bmod(?![a-zA-Z])", "mod"),
         (r"\\gcd(?![a-zA-Z])", "gcd"),
+        (r"\\lcm(?![a-zA-Z])", "lcm"),
         (r"\\min(?![a-zA-Z])", "min"),
         (r"\\max(?![a-zA-Z])", "max"),
         (r"\\log(?![a-zA-Z])", "log"),
         (r"\\ln(?![a-zA-Z])", "ln"),
         (r"\\exp(?![a-zA-Z])", "exp"),
+        (r"\\operatorname\{([^{}]+)\}", r"\1"),
         (r"\\text\{([^{}]+)\}", r"\1"),
         (r"\\mathbf\{([^{}]+)\}", r"<b>\1</b>"),
         (r"\\mathcal\{([^{}]+)\}", r"<i>\1</i>"),
@@ -264,7 +313,8 @@ def latex_to_reportlab_html(tex: str) -> str:
     # Single Latin letters (or common 2-letter tokens like dp) italicized;
     # Keep digits, operators, entities, tags, and function names upright.
     UPRIGHT_WORDS = {
-        "gcd", "min", "max", "log", "ln", "exp", "mod", "abs", "sin", "cos", "tan", "font", "size", "super", "sub"
+        "gcd", "lcm", "min", "max", "log", "ln", "exp", "mod", "abs", "sin", "cos", "tan",
+        "floor", "ceil", "deg", "det", "font", "size", "super", "sub"
     }
 
     parts = re.split(r"(<[^>]+>|&[a-zA-Z0-9#]+;)", t)
@@ -319,7 +369,7 @@ def md_to_reportlab_html(text: str) -> str:
     text = re.sub(r"(?<!\\)\$(?!\s)([^\$\n\r]+?)(?<!\s)\$", math_store, text)
 
     # 3. Escape bare & that are not already valid HTML entities
-    text = re.sub(r"&(?!(?:amp|lt|gt|quot|le|ge|ne|middot|times|plusmn|isin|notin|asymp|infin|Sigma|Pi|alpha|beta|gamma|lambda|pi|theta|sigma|radic|minus|equiv|#\d+|#x[0-9a-fA-F]+);)", "&amp;", text)
+    text = VALID_HTML_ENTITIES_RE.sub("&amp;", text)
 
     # 4. Convert **bold** to <b>bold</b>
     text = re.sub(r"\*\*([^*]+)\*\*", r"<b>\1</b>", text)

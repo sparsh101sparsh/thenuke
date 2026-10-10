@@ -139,6 +139,34 @@ class TestMathTypographyFidelity:
         assert "&Pi;" in html
         assert "<sub>" in html
 
+    def test_floor_and_ceiling_functions(self):
+        tex = r"\lfloor \sqrt{X} \rfloor + \lceil n/2 \rceil + \lfloor a_i / 2 \rfloor"
+        html = latex_to_reportlab_html(tex)
+        assert r"\lfloor" not in html
+        assert r"\rfloor" not in html
+        assert r"\lceil" not in html
+        assert r"\rceil" not in html
+        assert "floor(" in html
+        assert "ceil(" in html
+        assert "&radic;(<i>X</i>)" in html
+
+    def test_latex_escaped_symbols_and_factorization(self):
+        tex = r"X \% i == 0 \text{ with } p_1^{a_1} \times p_2^{a_2}"
+        html = latex_to_reportlab_html(tex)
+        assert r"\%" not in html
+        assert "%" in html
+        assert r"\times" not in html
+        assert "&times;" in html
+        assert '<sub><font size="6.5">1</font></sub>' in html
+
+    def test_extended_operators_and_lcm(self):
+        tex = r"f(X) = X - \lfloor X/C \rfloor + \text{lcm}(C, D) \le 10^9"
+        html = latex_to_reportlab_html(tex)
+        assert r"\lfloor" not in html
+        assert "floor(" in html
+        assert "lcm(" in html
+        assert "&le;" in html
+
 
 # ===========================================================================
 # 4. XML Parsing Resilience & Emergency Repair Tests

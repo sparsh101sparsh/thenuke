@@ -325,7 +325,14 @@ def run_pass2_textual(pdf_path: Path) -> Pass2TextualResult:
         f"Unrendered math delimiter marker '$$$' at pos {m.start()}"
         for m in re.finditer(r"\$\$\$", full_text)
     ]
-    rendering_hits = escape_hits + placeholder_hits + delimiter_hits
+    latex_macro_hits = [
+        f"Unrendered LaTeX macro '{m.group()}' at pos {m.start()}"
+        for m in re.finditer(
+            r"\\(?:le|leq|ge|geq|ne|neq|notin|frac|sqrt|sum|prod|oplus|cdots|ldots|implies|iff|pmod|bmod|gcd|lfloor|rfloor|lceil|rceil|textasciicircum|mathbf|mathcal|qquad)\b",
+            full_text,
+        )
+    ]
+    rendering_hits = escape_hits + placeholder_hits + delimiter_hits + latex_macro_hits
 
     errors = 0
     warnings = 0
