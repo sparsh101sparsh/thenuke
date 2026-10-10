@@ -108,12 +108,16 @@ def md_to_reportlab_html(text: str) -> str:
 class PublicationCanvas(canvas.Canvas):
     """Two-pass canvas that renders running headers, footers, total page counts, and the X glyph."""
 
+    doc_title: str = "Git: The Complete Reference Manual"
+    edition_label: str = "Monochrome Reference Edition"
+    author_branding: str = "Prepared by @issparsh @sumitsingh097"
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._saved_page_states: List[Dict[str, Any]] = []
-        self.doc_title = "Git: The Complete Reference Manual"
-        self.edition_label = "Monochrome Reference Edition"
-        self.author_branding = "Prepared by @issparsh @sumitsingh097"
+        self.doc_title = getattr(self, "doc_title", self.__class__.doc_title)
+        self.edition_label = getattr(self, "edition_label", self.__class__.edition_label)
+        self.author_branding = getattr(self, "author_branding", self.__class__.author_branding)
 
     def showPage(self):
         self._saved_page_states.append(dict(self.__dict__))
@@ -595,7 +599,7 @@ class ReferenceManualBuilder:
 
         while i < n:
             line = lines[i].rstrip()
-            if not line or line.startswith("=" * 10) or line.startswith("-" * 10):
+            if not line or line.startswith("=" * 10) or line.startswith("-" * 10) or re.match(r"^[-=_*]{3,}$", line.strip()):
                 i += 1
                 continue
 
@@ -604,12 +608,17 @@ class ReferenceManualBuilder:
                 title_line = line.lstrip("# ").strip()
                 if ":" in title_line:
                     topic_name = title_line.split(":")[0].strip()
-                detected_phases = len(set(re.findall(r"^PHASE\s+(\d+)", md_text, re.MULTILINE))) or 9
-                detected_drills = len(re.findall(r"CHALLENGE\s+\d+", md_text, re.IGNORECASE)) or 27
-                story.extend(self.build_cover_page(topic_name, num_phases=detected_phases, num_drills=detected_drills))
+                detected_phases = len(set(re.findall(r"^(?:#{1,3}\s*)?PHASE\s+(\d+)", md_text, re.MULTILINE | re.IGNORECASE))) or 6
+                detected_drills = len(re.findall(r"CHALLENGE\s+\d+", md_text, re.IGNORECASE)) or 6
+                sleep_quote = (
+                    "Sleep is the single most effective thing we can do to reset our brain and body health each day.",
+                    "Dr. Matthew Walker"
+                )
+                custom_q = sleep_quote if "SLEEP" in topic_name.upper() else None
+                story.extend(self.build_cover_page(topic_name, num_phases=detected_phases, num_drills=detected_drills, custom_quote=custom_q))
                 i += 1
                 # Skip cover subtitle, branding, and dividers so they don't leak onto Page 2
-                while i < n and "DETAILED SYLLABUS" not in lines[i]:
+                while i < n and "DETAILED SYLLABUS" not in lines[i] and not lines[i].startswith("PHASE ") and not lines[i].startswith("## PART") and not lines[i].startswith("### PHASE") and not re.match(r"^(?:#{1,3}\s*)?PHASE\s+\d+", lines[i], re.IGNORECASE):
                     i += 1
                 continue
 
@@ -632,7 +641,7 @@ class ReferenceManualBuilder:
                 continue
 
             if in_syllabus:
-                if line.startswith("PHASE "):
+                if line.startswith("PHASE ") or re.match(r"^(?:PART|Phase)\s+\d+", line):
                     story.append(Paragraph(line.strip(), self.styles["TOCPhase"]))
                 elif line.startswith("Topics:"):
                     story.append(Paragraph(line.strip(), self.styles["TOCSub"]))
@@ -653,15 +662,29 @@ class ReferenceManualBuilder:
             # Content Parsing (Post-Syllabus)
             # -------------------------------------------------------------
 
+            # 0. Part Header in body (united with following Phase header)
+            if re.match(r"^(?:#{1,3}\s*)?PART\s+[IVXLCDM\d]+", line, re.IGNORECASE):
+                safe_page_break()
+                part_title = line.lstrip("# ").strip()
+                story.append(Paragraph(part_title, self.styles["TOCPhase"]))
+                i += 1
+                while i < n and (not lines[i].strip() or re.match(r"^[-=_*]{3,}$", lines[i].strip())):
+                    i += 1
+                if i < n and re.match(r"^(?:#{1,3}\s*)?PHASE\s+\d+\s*(?:—|-|:)", lines[i], re.IGNORECASE):
+                    story.append(Paragraph(lines[i].lstrip("# ").strip(), self.styles["PhaseHeader"]))
+                    story.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_BLACK, spaceBefore=4, spaceAfter=8))
+                    i += 1
+                continue
+
             # 1. Phase Header (starts on fresh page)
-            if re.match(r"^(?:#\s*)?PHASE\s+\d+\s*—\s*PRACTICE DRILLS", line, re.IGNORECASE):
+            if re.match(r"^(?:#{1,3}\s*)?PHASE\s+\d+\s*—\s*PRACTICE DRILLS", line, re.IGNORECASE):
                 story.append(Spacer(1, 14))
                 story.append(Paragraph(line.lstrip("# ").strip(), self.styles["PhaseHeader"]))
                 story.append(HRFlowable(width="100%", thickness=1.0, color=COLOR_BLACK, spaceBefore=4, spaceAfter=8))
                 i += 1
                 continue
 
-            if re.match(r"^(?:#\s*)?PHASE\s+\d+\s*—", line, re.IGNORECASE):
+            if re.match(r"^(?:#{1,3}\s*)?PHASE\s+\d+\s*(?:—|-|:)", line, re.IGNORECASE):
                 safe_page_break()
                 story.append(Paragraph(line.lstrip("# ").strip(), self.styles["PhaseHeader"]))
                 story.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_BLACK, spaceBefore=4, spaceAfter=8))
@@ -669,7 +692,7 @@ class ReferenceManualBuilder:
                 continue
 
             # 2. Appendices Header (starts on fresh page)
-            if "APPENDICES — ARCHITECTURAL DEEP DIVES" in line:
+            if re.match(r"^(?:#{1,3}\s*)?APPENDICES", line, re.IGNORECASE):
                 safe_page_break()
                 story.append(Paragraph(line.lstrip("# ").strip(), self.styles["PhaseHeader"]))
                 story.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_BLACK, spaceBefore=4, spaceAfter=8))

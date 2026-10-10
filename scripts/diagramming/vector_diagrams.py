@@ -22,6 +22,7 @@ from reportlab.graphics.shapes import (
     String,
 )
 from reportlab.lib import colors
+from reportlab.pdfbase import pdfmetrics
 
 # ---------------------------------------------------------------------------
 # Strict Monochrome Palette Tokens
@@ -130,28 +131,42 @@ def _make_canvas_frame(height: float, title: str, subtitle: str = "") -> Tuple[D
         )
     )
     # Header title
+    clean_title = title.upper()
     d.add(
         String(
             10,
             height - 15,
-            title.upper(),
+            clean_title,
             fontName="Helvetica-Bold",
             fontSize=8.5,
             fillColor=COLOR_BLACK,
         )
     )
     if subtitle:
-        d.add(
-            String(
-                TOTAL_WIDTH - 10,
-                height - 15,
-                subtitle,
-                fontName="Helvetica-Oblique",
-                fontSize=7.5,
-                fillColor=COLOR_MUTED,
-                textAnchor="end",
+        title_w = pdfmetrics.stringWidth(clean_title, "Helvetica-Bold", 8.5)
+        sub_w = pdfmetrics.stringWidth(subtitle, "Helvetica-Oblique", 7.5)
+        # Guarantee minimum 20 pt gutter between title and subtitle
+        if title_w + sub_w + 30.0 > TOTAL_WIDTH:
+            avail_w = TOTAL_WIDTH - title_w - 35.0
+            if avail_w < 60:
+                subtitle = ""
+            else:
+                while subtitle and pdfmetrics.stringWidth(subtitle + "...", "Helvetica-Oblique", 7.5) > avail_w:
+                    subtitle = subtitle[:-1]
+                if subtitle:
+                    subtitle = subtitle.rstrip() + "..."
+        if subtitle:
+            d.add(
+                String(
+                    TOTAL_WIDTH - 10,
+                    height - 15,
+                    subtitle,
+                    fontName="Helvetica-Oblique",
+                    fontSize=7.5,
+                    fillColor=COLOR_MUTED,
+                    textAnchor="end",
+                )
             )
-        )
 
     g = Group()
     d.add(g)
@@ -788,7 +803,7 @@ def create_sleep_architecture_diagram() -> Drawing:
     height = 160.0
     d, g = _make_canvas_frame(
         height,
-        "Figure 1.1: Human Sleep Architecture & Ultradian 90-Minute Cycles",
+        "Figure 1.1: Human Sleep Architecture & 90-Min Cycles",
         "NREM Slow-Wave vs REM Distribution",
     )
 
@@ -829,8 +844,8 @@ def create_memory_transfer_diagram() -> Drawing:
     height = 150.0
     d, g = _make_canvas_frame(
         height,
-        "Figure 2.1: Hippocampal-Neocortical Memory Consolidation Pipeline",
-        "Slow-Wave Sleep (<1 Hz) & Spindle (11-16 Hz) Coupling",
+        "Figure 2.1: Memory Consolidation Pipeline",
+        "Slow-Wave Sleep & Spindle Coupling",
     )
 
     y_box = 35.0
@@ -875,8 +890,8 @@ def create_adenosine_caffeine_diagram() -> Drawing:
     height = 155.0
     d, g = _make_canvas_frame(
         height,
-        "Figure 3.1: Adenosine Sleep Pressure & Competitive Caffeine Blockade",
-        "Two-Process Model: Process S vs Receptor Antagonism",
+        "Figure 3.1: Adenosine Sleep Pressure & Caffeine Blockade",
+        "Process S vs Receptor Antagonism",
     )
 
     y_base = 32.0
@@ -932,8 +947,8 @@ def create_immune_killer_cells_diagram() -> Drawing:
     height = 150.0
     d, g = _make_canvas_frame(
         height,
-        "Figure 4.1: Natural Killer (NK) Cell Cytotoxic Collapse (4-Hour Sleep Loss)",
-        "Empirical Benchmark: 70% Reduction in Innate Tumor Clearance",
+        "Figure 4.1: Natural Killer Cell Cytotoxic Collapse",
+        "70% Deficit from 4h Sleep Loss",
     )
 
     y_base = 35.0
@@ -983,8 +998,8 @@ def create_thermal_circadian_diagram() -> Drawing:
     height = 155.0
     d, g = _make_canvas_frame(
         height,
-        "Figure 5.1: Core Body Thermoregulation & Melatonin Circadian Gate",
-        "Suprachiasmatic Nucleus Signaling & Distal Vasodilation",
+        "Figure 5.1: Thermoregulation & Circadian Sleep Gate",
+        "Core Body Cooling & Melatonin Gate",
     )
 
     y_base = 32.0
