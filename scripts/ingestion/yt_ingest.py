@@ -494,7 +494,7 @@ def download_subtitles(
         "--skip-download",
         "--write-subs",
         "--write-auto-subs",
-        "--sub-langs", "en.*,hi.*",
+        "--sub-langs", "hi-orig,hi,en,en.*,hi.*",
         "--sub-format", "vtt/srt/best",
         "-o", out_template,
         url,

@@ -186,7 +186,7 @@ HEADER_TEXT = "JavaScript: The Complete Reference Manual — Architecture & Core
 FOOTER_RIGHT = "High-Performance Engineering Manual • Monochrome Edition"
 
 
-def draw_header_footer(page: "fitz.Page", page_num: int, total_pages: int) -> None:  # noqa: F821
+def draw_header_footer(page: "fitz.Page", page_num: int, total_pages: int, header_text: Optional[str] = None) -> None:  # noqa: F821
     """Draw running header and footer on a page."""
     try:
         import fitz
@@ -203,7 +203,7 @@ def draw_header_footer(page: "fitz.Page", page_num: int, total_pages: int) -> No
 
         page.insert_text(
             fitz.Point(MARGIN_PT, header_y),
-            HEADER_TEXT,
+            header_text or HEADER_TEXT,
             fontname=FONT_BODY,
             fontsize=SIZE_FOOTER,
             color=Palette.MUTED,
@@ -387,7 +387,11 @@ def draw_event_loop_diagram(page: "fitz.Page", origin_x: float, origin_y: float)
 # Cover Page Generator
 # ---------------------------------------------------------------------------
 
-def render_cover_page(doc: "fitz.Document", branding_line: str = "Prepared by @issparsh @sumitsingh097") -> None:  # noqa: F821
+def render_cover_page(
+    doc: "fitz.Document",
+    branding_line: str = "Prepared by @issparsh @sumitsingh097",
+    doc_title: str = "JAVASCRIPT",
+) -> None:  # noqa: F821
     """Insert a full cover page as page 0 of the document."""
     try:
         import fitz
@@ -414,7 +418,7 @@ def render_cover_page(doc: "fitz.Document", branding_line: str = "Prepared by @i
         # Main title
         page.insert_text(
             fitz.Point(MARGIN_PT, cy),
-            "JAVASCRIPT",
+            doc_title.upper(),
             fontname=FONT_BOLD,
             fontsize=SIZE_DOC_TITLE * 2.2,
             color=Palette.BLACK,
@@ -623,8 +627,17 @@ def compile_markdown_to_pdf(
 
         doc = fitz.open()
 
+        # Detect topic from first heading in markdown
+        detected_topic = "JAVASCRIPT"
+        for line in markdown_text.splitlines()[:10]:
+            if line.startswith("# ") and ":" in line:
+                candidate = line.lstrip("# ").split(":")[0].strip()
+                if candidate:
+                    detected_topic = candidate.upper()
+                    break
+
         # Render cover page
-        render_cover_page(doc, branding_line=branding)
+        render_cover_page(doc, branding_line=branding, doc_title=detected_topic)
 
         # Parse Markdown into typed blocks
         blocks = _parse_markdown_blocks(markdown_text)
@@ -746,8 +759,9 @@ def compile_markdown_to_pdf(
 
         # Apply headers & footers to all content pages (skip cover at index 0)
         total = doc.page_count
+        dynamic_header = f"{detected_topic.title()}: The Complete Reference Manual — Architecture & Core Internals"
         for pg_idx in range(1, total):
-            draw_header_footer(doc[pg_idx], pg_idx, total - 1)
+            draw_header_footer(doc[pg_idx], pg_idx, total - 1, header_text=dynamic_header)
 
         # Save PDF
         out_path = Path(output_path)

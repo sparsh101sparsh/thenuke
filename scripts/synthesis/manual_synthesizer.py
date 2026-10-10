@@ -161,6 +161,125 @@ APPENDICES: List[Dict[str, str]] = [
     {"title": "Appendix C — Machine Coding Gauntlet", "scope": "30 FAANG-Style System Design Coding Problems with Constraints & Solutions"},
 ]
 
+
+GIT_PHASE_CATALOG: List[Dict[str, Any]] = [
+    {
+        "number": 1,
+        "title": "Version Control Systems & Git Philosophy",
+        "topics": "CVCS vs DVCS, Linus Torvalds, Content-Addressable Storage, Snapshots vs Deltas",
+        "chapters": [
+            "1.1 — What Is Git? Centralised vs Distributed Architecture: Local Repositories and Offline Power",
+            "1.2 — The Linus Torvalds Origin: Why BitKeeper Breakage Led to a Performance-First Engine",
+            "1.3 — Snapshots, Not Deltas: How Git Models Project State as a Series of Complete Snapshots",
+            "1.4 — Content-Addressable Storage: SHA-1 Hashes, Cryptographic Integrity, and Immutability",
+        ],
+    },
+    {
+        "number": 2,
+        "title": "Repository Architecture & Configuration",
+        "topics": "git init, .git Directory Internals, 3 Configuration Scopes, Global vs Local Identities",
+        "chapters": [
+            "2.1 — Initializing Repositories: git init, The Anatomy of the .git Directory (HEAD, config, objects, refs)",
+            "2.2 — Git Configuration Hierarchy: System, Global, and Local Scopes (user.name, user.email, core.editor)",
+            "2.3 — SSH & Authentication Setup: Keypairs, ssh-agent, and Secure Remote Communication",
+            "2.4 — Environment Customization: Useful Aliases, Default Branch Naming, and Push Defaults",
+        ],
+    },
+    {
+        "number": 3,
+        "title": "The Three Trees & Core Lifecycle",
+        "topics": "Working Directory, Staging Area (Index), Repository (HEAD), git add, git commit, git status",
+        "chapters": [
+            "3.1 — The Three Trees Mental Model: Working Tree, Index/Staging Area, and HEAD Commit",
+            "3.2 — Staging Files: git add Deep Dive, Tracking New vs Modified Files, Staging Partial Hunks",
+            "3.3 — Atomic Commits: git commit, Commit Messages as Historical Documentation, Conventional Commits",
+            "3.4 — Inspecting State: git status Invariants, Untracked vs Tracked, Changes Staged for Commit",
+        ],
+    },
+    {
+        "number": 4,
+        "title": "File Tracking, Ignoring & Tree Cleanliness",
+        "topics": ".gitignore Rules, Pattern Syntax, Untracking Cached Files, .gitkeep Conventions",
+        "chapters": [
+            "4.1 — Ignoring Files: .gitignore Syntax, Wildcards, Negation (!), and Directory Anchoring",
+            "4.2 — Untracking Already Committed Files: git rm --cached and Clearing the Index Cache",
+            "4.3 — Tracking Empty Directories: The .gitkeep Convention vs Git's Inability to Track Empty Trees",
+            "4.4 — Cleaning the Working Tree: git clean Flags (-n dry run, -fd), Safeguards Against Data Loss",
+        ],
+    },
+    {
+        "number": 5,
+        "title": "History Inspection & Diffing Engine",
+        "topics": "git log Formatting, Revision Walk, Commit Ranges, git diff Engine, git show",
+        "chapters": [
+            "5.1 — Navigating History: git log Flags (--oneline, --graph, --decorate, --stat, -p)",
+            "5.2 — Inspecting Diffs: git diff (Working Tree vs Index) vs git diff --staged (Index vs HEAD)",
+            "5.3 — Comparing Branches and Commits: Double-Dot (..) vs Triple-Dot (...) Range Semantics",
+            "5.4 — Single Object Inspection: git show, Examining Specific Blobs and Commits via SHA-1",
+        ],
+    },
+    {
+        "number": 6,
+        "title": "Branching & Pointer Mechanics",
+        "topics": "Branch as a 41-Byte Pointer, git branch, git checkout, git switch, Detached HEAD State",
+        "chapters": [
+            "6.1 — Branch Architecture: Why Git Branches Are Cheap 41-Byte SHA-1 Pointer Files in refs/heads/",
+            "6.2 — Branch Creation & Switching: git branch vs git switch vs git checkout (-b)",
+            "6.3 — The Detached HEAD State: What Happens When HEAD Points to a Commit Instead of a Branch Ref",
+            "6.4 — Deleting and Renaming Branches: Safe Delete (-d) vs Force Delete (-D), Upstream Tracking",
+        ],
+    },
+    {
+        "number": 7,
+        "title": "Merging Strategies & Conflict Resolution",
+        "topics": "Fast-Forward Merge, Three-Way Merge, Common Ancestor (Merge Base), Conflict Markers, Resolution",
+        "chapters": [
+            "7.1 — Fast-Forward Merges: Linear History Extension When No Divergence Exists",
+            "7.2 — Three-Way Merges: Recursive/Ort Strategy, Merge Commits with Two Parents, Finding the Merge Base",
+            "7.3 — Merge Conflict Anatomy: Understanding Conflict Markers (<<<<<<<, =======, >>>>>>>)",
+            "7.4 — Conflict Resolution Workflow: Editing Markers, git add to Mark Resolved, git merge --abort",
+        ],
+    },
+    {
+        "number": 8,
+        "title": "Advanced Working Tree Manipulation & Stashing",
+        "topics": "git stash Stack, Stash Internals, git restore, Lightweight vs Annotated Tags",
+        "chapters": [
+            "8.1 — Stashing Uncommitted Changes: git stash push, git stash pop vs apply, Inspecting the Stash Stack",
+            "8.2 — Stashing Untracked Files (-u) and Stash Branching: Safely Context-Switching in Mid-Feature",
+            "8.3 — Undoing Changes in the Modern Era: git restore (--staged vs working tree) vs Legacy git checkout",
+            "8.4 — Git Tags & Semantic Releases: Lightweight Tags vs Annotated Tags (git tag -a -m), GPG Signing",
+        ],
+    },
+    {
+        "number": 9,
+        "title": "History Rewriting, Rebase & Distributed Workflows",
+        "topics": "git rebase, Interactive Rebase (-i), Golden Rule of Rebasing, Remote Workflows, Pull Requests",
+        "chapters": [
+            "9.1 — Git Rebase Fundamentals: Replaying Commits Onto a New Base, Linearizing Commit History",
+            "9.2 — Interactive Rebase (git rebase -i): Squashing, Fixups, Rewording, and Dropping Commits",
+            "9.3 — The Golden Rule of Rebasing: Never Rebase Commits That Have Been Pushed to Public Remotes",
+            "9.4 — Remote Operations: git remote, git fetch vs git pull (--rebase), git push (--force-with-lease)",
+            "9.5 — Enterprise Collaborative Workflows: GitHub Flow vs Trunk-Based Development vs Gitflow",
+        ],
+    },
+]
+
+GIT_APPENDICES: List[Dict[str, str]] = [
+    {
+        "title": "Appendix A — Git Plumbing & Object Database Internals",
+        "scope": "The 4 Object Types (Blobs, Trees, Commits, Annotated Tags), zlib Compression, git cat-file, Packed Refs",
+    },
+    {
+        "title": "Appendix B — The Catastrophe Recovery Gauntlet",
+        "scope": "git reflog Navigation, Recovering Deleted Branches, Dangling Commits Recovery, git fsck Integrity Verification",
+    },
+    {
+        "title": "Appendix C — 30 FAANG Version Control Machine Coding & Scenario Questions",
+        "scope": "Design a Distributed Version Control System, Implement Commit DAG Topological Sort, Resolve Multi-Way Divergence",
+    },
+]
+
 ROMAN_HINGLISH_BRIDGES = [
     "Technically bolo toh...",
     "Har term ka matlab samjho:",
@@ -674,8 +793,310 @@ _PHASE_CHALLENGES: Dict[int, PhaseChallenge] = {
 }
 
 
-def get_phase_challenge(phase_number: int) -> PhaseChallenge:
+
+_GIT_PHASE_CHALLENGES: Dict[int, PhaseChallenge] = {
+    1: PhaseChallenge(
+        phase_number=1,
+        challenge_1_title="Output Prediction: DVCS vs CVCS Offline Commit Trace",
+        challenge_1_prompt=(
+            "Trace the offline execution behavior of Git versus a Centralized VCS (SVN).\n\n"
+            "```bash\n"
+            "# Offline workstation: network disconnected\n"
+            "$ git checkout -b feature/offline-engine\n"
+            "$ echo 'export const cache = new Map();' > cache.js\n"
+            "$ git add cache.js\n"
+            "$ git commit -m 'feat: implement in-memory cache'\n"
+            "$ git log -1 --stat\n"
+            "```\n\n"
+            "Predict the exact output and explain why Git executes this command in under 5ms with 0 network calls."
+        ),
+        challenge_2_title="Algorithm: Content-Addressable Blob Storage in Python",
+        challenge_2_prompt=(
+            "Implement `store_blob(data: bytes, repo_root: Path) -> str` adhering to Git's object format:\n"
+            "- Prepend header: `blob <size>\\0<data>`.\n"
+            "- Compute SHA-1 hexadecimal hash (40 characters).\n"
+            "- Compress object payload using `zlib.compress()`.\n"
+            "- Store compressed bytes at `.git/objects/<hash[:2]>/<hash[2:]>`.\n"
+            "- Return the 40-character SHA-1 hash. Native Python standard library only with zero external dependencies."
+        ),
+        challenge_3_title="Industrial Mini-Project: Git Repository Scaffolder",
+        challenge_3_prompt=(
+            "Build a zero-dependency script `init_repo(path: Path) -> None` that creates a valid Git repository:\n"
+            "- Creates `.git/` with subdirectories: `objects/`, `refs/heads/`, `refs/tags/`, `hooks/`.\n"
+            "- Writes `.git/HEAD` referencing `ref: refs/heads/main\\n`.\n"
+            "- Writes `.git/config` with valid core section (`bare = false`, `filemode = true`).\n"
+            "- Writes `.git/description` default message.\n"
+            "Verify that running native `git status` inside the initialized folder returns exit code 0."
+        ),
+    ),
+    2: PhaseChallenge(
+        phase_number=2,
+        challenge_1_title="Output Prediction: Git Config Scope Precedence Trace",
+        challenge_1_prompt=(
+            "Predict the final value printed by `git config user.email` given conflicting scopes:\n\n"
+            "```bash\n"
+            "$ git config --system user.email 'system@enterprise.corp'\n"
+            "$ git config --global user.email 'global@personal.io'\n"
+            "$ git config --local user.email 'local@project.org'\n"
+            "$ git config user.email                             # ?\n"
+            "$ git config --unset user.email\n"
+            "$ git config user.email                             # ?\n"
+            "```\n\n"
+            "Trace the priority hierarchy: System -> Global -> Local."
+        ),
+        challenge_2_title="Algorithm: Zero-Dependency Git INI Config Parser",
+        challenge_2_prompt=(
+            "Implement `parse_git_config(config_text: str) -> dict` with constraints:\n"
+            "- Parse standard sections `[core]` and subsections `[remote \"origin\"]`.\n"
+            "- Strip leading/trailing whitespace and comments (`#` and `;`).\n"
+            "- Parse boolean flags (true, false, yes, no, 1, 0) and nested key-value pairs.\n"
+            "- Time complexity: O(N) where N is text length. Zero external imports."
+        ),
+        challenge_3_title="Industrial Mini-Project: Multi-Profile Git Identity Switcher",
+        challenge_3_prompt=(
+            "Create a zero-dependency CLI utility `git-profile-switch` that:\n"
+            "- Inspects `git remote get-url origin`.\n"
+            "- Matches enterprise domains (e.g. `github.com/company/`) versus personal accounts.\n"
+            "- Automatically sets `user.name`, `user.email`, and `core.sshCommand` with dedicated SSH keys.\n"
+            "- Emits clear confirmation output with inline verification annotations."
+        ),
+    ),
+    3: PhaseChallenge(
+        phase_number=3,
+        challenge_1_title="Output Prediction: The Three Trees State Machine Trace",
+        challenge_1_prompt=(
+            "Trace the exact state of files across Working Tree, Index (Staging), and HEAD:\n\n"
+            "```bash\n"
+            "$ echo 'v1' > app.py && git add app.py && git commit -m 'c1'\n"
+            "$ echo 'v2' > app.py\n"
+            "$ git status --short                                # ?\n"
+            "$ git add app.py\n"
+            "$ echo 'v3' > app.py\n"
+            "$ git status --short                                # ?\n"
+            "$ git diff                                          # ?\n"
+            "$ git diff --staged                                 # ?\n"
+            "```\n\n"
+            "Explain how the same file simultaneously holds distinct staged and unstaged content."
+        ),
+        challenge_2_title="Algorithm: Git Tree Object Serializer",
+        challenge_2_prompt=(
+            "Implement `create_tree_object(entries: list[tuple[str, str, str]]) -> tuple[str, bytes]`:\n"
+            "- Each entry: `(mode, name, sha1_hex)` (e.g., `('100644', 'main.py', '4b825dc6...')`).\n"
+            "- Sort entries using Git's strict byte-ordering rules (directories sorted as if ending with '/').\n"
+            "- Encode entries in binary format: `<mode> <name>\\0<20-byte-binary-sha1>`.\n"
+            "- Prepend header `tree <size>\\0` and compute SHA-1 hash. Native standard library only."
+        ),
+        challenge_3_title="Industrial Mini-Project: Pure Python Git Staging Simulator",
+        challenge_3_prompt=(
+            "Build an in-memory staging area simulator class `GitIndexManager`:\n"
+            "- `stage_file(path, content)` — creates blob object, updates index entries map.\n"
+            "- `unstage_file(path)` — restores index entry to match current HEAD commit.\n"
+            "- `commit(author, message)` — builds tree object, writes commit object, updates HEAD ref.\n"
+            "- Include inline output assertions verifying commit SHA-1 generation on sample workloads."
+        ),
+    ),
+    4: PhaseChallenge(
+        phase_number=4,
+        challenge_1_title="Output Prediction: .gitignore Negation & Directory Pruning",
+        challenge_1_prompt=(
+            "Given the following `.gitignore` rules, predict which files are tracked versus ignored:\n\n"
+            "```text\n"
+            "logs/\n"
+            "!logs/important.log\n"
+            "temp/*\n"
+            "!temp/keep.txt\n"
+            "dist/**/build.js\n"
+            "```\n\n"
+            "Evaluate tracking status for:\n"
+            "1. `logs/debug.log`\n"
+            "2. `logs/important.log` (Gotcha alert: check parent directory pruning!)\n"
+            "3. `temp/keep.txt`\n"
+            "4. `dist/release/v1/build.js`\n"
+            "Explain why Git cannot re-include a file if its parent directory is excluded."
+        ),
+        challenge_2_title="Algorithm: Git Pathspec Pattern Matcher",
+        challenge_2_prompt=(
+            "Implement `matches_gitignore(path: str, rule: str) -> bool` supporting:\n"
+            "- Leading slash anchoring: `/docs/` matches root only, `docs/` matches anywhere.\n"
+            "- Wildcards: `*` (any chars except `/`), `**` (recursive multi-directory match).\n"
+            "- Question mark: `?` (single char).\n"
+            "- Trailing slash: `dir/` (matches directories only).\n"
+            "- Implement in O(N*M) with zero third-party libraries."
+        ),
+        challenge_3_title="Industrial Mini-Project: Pre-Commit Secret Scanner Hook",
+        challenge_3_prompt=(
+            "Build an automated pre-commit hook script `.git/hooks/pre-commit`:\n"
+            "- Inspects all staged files via `git diff --cached --name-only`.\n"
+            "- Scans diff hunks for sensitive patterns: AWS keys (`AKIA...`), GitHub tokens (`ghp_...`), private keys.\n"
+            "- Blocks commit with exit code 1 if secret matches are detected, printing exact filename and line.\n"
+            "- Must be executable, self-contained, and run in under 50ms."
+        ),
+    ),
+    5: PhaseChallenge(
+        phase_number=5,
+        challenge_1_title="Output Prediction: Commit Range Semantics (Double vs Triple Dot)",
+        challenge_1_prompt=(
+            "Given branch `feature` branched off `main` at commit C1, where `main` has commits C1->C2->C3 "
+            "and `feature` has C1->C4->C5:\n\n"
+            "```bash\n"
+            "$ git log main..feature --oneline                 # ?\n"
+            "$ git log feature..main --oneline                 # ?\n"
+            "$ git log main...feature --oneline                # ?\n"
+            "$ git diff main...feature                         # ?\n"
+            "```\n\n"
+            "Predict exact commit lists and diff boundaries. Explain the merge base reference behavior in `main...feature`."
+        ),
+        challenge_2_title="Algorithm: Myers Diff Algorithm in Python",
+        challenge_2_prompt=(
+            "Implement the Myers Diff algorithm `myers_diff(lines_a: list[str], lines_b: list[str]) -> list[str]`:\n"
+            "- Find the Shortest Edit Script (SES) using greedy diagonal search on the edit graph.\n"
+            "- Generate standard unified diff hunks prefixed with ` `, `+`, and `-`.\n"
+            "- Time complexity: O(N * D) where D is edit distance. Zero external dependencies.\n"
+            "- Include inline output validation on a 10-line code modification sample."
+        ),
+        challenge_3_title="Industrial Mini-Project: Interactive Terminal Commit Graph Viewer",
+        challenge_3_prompt=(
+            "Build a terminal visualizer that parses a local repository's commit DAG:\n"
+            "- Reads `.git/refs/heads/` and walks parent commit pointers in `.git/objects/`.\n"
+            "- Renders ASCII topology columns `*   commit (HEAD -> main)` and `|\\` branch forks.\n"
+            "- Colorizes commit hashes and branch pointers with standard ANSI escape sequences.\n"
+            "- Zero npm/pip dependencies. Runs natively in Python."
+        ),
+    ),
+    6: PhaseChallenge(
+        phase_number=6,
+        challenge_1_title="Output Prediction: Detached HEAD State & Garbage Collection Trace",
+        challenge_1_prompt=(
+            "Trace the state of HEAD pointer, branch references, and commit reachability:\n\n"
+            "```bash\n"
+            "$ git checkout main                               # HEAD points to main\n"
+            "$ git checkout HEAD~2                             # What is HEAD now?\n"
+            "$ echo 'hotfix' > fix.txt && git commit -am 'temp'# Commit C_orph created\n"
+            "$ git checkout main                               # Switched back to main\n"
+            "$ git log -1 --oneline                            # Is C_orph visible?\n"
+            "```\n\n"
+            "Explain why C_orph becomes a dangling commit and how `git reflog` rescues it before `git gc`."
+        ),
+        challenge_2_title="Algorithm: Lowest Common Ancestor (Merge Base) Finder",
+        challenge_2_prompt=(
+            "Implement `find_merge_base(dag: dict[str, list[str]], commit_a: str, commit_b: str) -> str`:\n"
+            "- `dag` maps commit hashes to list of parent commit hashes.\n"
+            "- Perform breadth-first search or topological sort from both commit tips.\n"
+            "- Return the closest shared ancestor commit hash.\n"
+            "- Must handle diamond merges, octopus merges, and fast-forward scenarios."
+        ),
+        challenge_3_title="Industrial Mini-Project: Automated Stale Branch Cleanup Engine",
+        challenge_3_prompt=(
+            "Build a production CLI tool `git-prune-stale`:\n"
+            "- Queries merged branches against target `main` (`git branch --merged main`).\n"
+            "- Excludes protected branches: `main`, `master`, `production`, `staging`.\n"
+            "- Prompts for confirmation and executes safe deletion (`git branch -d`).\n"
+            "- Emits detailed JSON execution summary with deleted branch names and author timestamps."
+        ),
+    ),
+    7: PhaseChallenge(
+        phase_number=7,
+        challenge_1_title="Output Prediction: 3-Way Merge Conflict Marker Resolution",
+        challenge_1_prompt=(
+            "Given BASE, OURS (branch `feat`), and THEIRS (branch `main`):\n\n"
+            "BASE:  `const timeout = 3000;`\n"
+            "OURS:  `const timeout = 5000; // extended for latency`\n"
+            "THEIRS:`const timeout = 2000; // shortened for speed`\n\n"
+            "Predict the exact content generated inside the working file when merging `feat` into `main`, "
+            "including standard conflict markers `<<<<<<< HEAD`, `=======`, and `>>>>>>> feat`."
+        ),
+        challenge_2_title="Algorithm: 3-Way Text Merge Engine",
+        challenge_2_prompt=(
+            "Implement `three_way_merge(base: str, ours: str, theirs: str) -> tuple[bool, str]`:\n"
+            "- Returns `(True, merged_content)` if both sides made non-conflicting modifications.\n"
+            "- Returns `(False, conflict_content)` if same lines were modified differently.\n"
+            "- Injects standard conflict markers with exact branch/commit labels.\n"
+            "- Zero dependencies. Native standard library implementation."
+        ),
+        challenge_3_title="Industrial Mini-Project: Terminal Merge Conflict Resolver TUI",
+        challenge_3_prompt=(
+            "Build an interactive terminal merge conflict resolver `git-resolve-cli`:\n"
+            "- Scans repository for files containing `<<<<<<< HEAD` markers.\n"
+            "- Parses individual conflict blocks and presents a terminal selector:\n"
+            "  `[1] Keep Current (HEAD)` | `[2] Keep Incoming` | `[3] Keep Both`\n"
+            "- Replaces conflict block with user selection, saves file, and stages via `git add`.\n"
+            "- Emits clear confirmation output with inline verification annotations."
+        ),
+    ),
+    8: PhaseChallenge(
+        phase_number=8,
+        challenge_1_title="Output Prediction: Git Stash Stack & Untracked Files Trace",
+        challenge_1_prompt=(
+            "Trace the working directory and stash list state:\n\n"
+            "```bash\n"
+            "$ echo 'tracked mod' >> app.js\n"
+            "$ echo 'secret config' > .env\n"
+            "$ git stash push -m 'WIP 1'                       # Did .env get stashed?\n"
+            "$ git status --short                                # What is left in worktree?\n"
+            "$ git stash push -u -m 'WIP 2 with untracked'\n"
+            "$ git stash list                                   # Predict exact stash index labels\n"
+            "$ git stash pop stash@{1}                          # Which stash pops?\n"
+            "```\n\n"
+            "Explain why `git stash` leaves untracked files in the working directory by default unless `-u` is specified."
+        ),
+        challenge_2_title="Algorithm: Worktree Stash Stack Engine",
+        challenge_2_prompt=(
+            "Implement a stash engine `GitStashManager` in Python:\n"
+            "- `push(workdir_diff, untracked_files, message)`: pushes snapshot onto LIFO stack.\n"
+            "- `pop(index=0)`: pops target snapshot and applies reverse patch onto current working tree.\n"
+            "- `apply(index=0)`: applies patch without removing entry from stack.\n"
+            "- `list()`: returns formatted array of stash reference descriptors.\n"
+            "- O(1) push and O(1) pop operations. Zero external dependencies."
+        ),
+        challenge_3_title="Industrial Mini-Project: Semantic Release & Annotated Tag Generator",
+        challenge_3_prompt=(
+            "Build an automated release tool `git-semver-release`:\n"
+            "- Walks commit history since latest annotated tag (`git describe --tags --abbrev=0`).\n"
+            "- Parses Conventional Commits: `feat:` -> minor bump, `fix:` -> patch bump, `BREAKING CHANGE:` -> major bump.\n"
+            "- Automatically creates an annotated tag (`git tag -a vX.Y.Z -m 'Release notes'`).\n"
+            "- Generates Markdown release changelog grouped by feature categories."
+        ),
+    ),
+    9: PhaseChallenge(
+        phase_number=9,
+        challenge_1_title="Output Prediction: Rebase vs Merge Topology & Commit Hash Divergence",
+        challenge_1_prompt=(
+            "Given `main` with C1->C2, and `feature` with C1->C3->C4:\n\n"
+            "Case A: `git checkout feature && git merge main`\n"
+            "Case B: `git checkout feature && git rebase main`\n\n"
+            "Predict for both cases:\n"
+            "1. The number of commits on `feature`.\n"
+            "2. Whether original commit hashes C3 and C4 are preserved or regenerated.\n"
+            "3. The commit parentage pointers of the feature branch tip.\n"
+            "Explain why rebasing pushed public branches causes upstream collision disasters."
+        ),
+        challenge_2_title="Algorithm: Interactive Rebase Plan Engine",
+        challenge_2_prompt=(
+            "Implement `rebase_executor(commits: list[dict], plan: list[tuple[str, str]]) -> list[dict]`:\n"
+            "- Supported commands: `pick`, `squash`, `fixup`, `reword`, `drop`.\n"
+            "- When `squash` is encountered: combine commit diffs and concatenate commit messages.\n"
+            "- When `fixup` is encountered: combine diffs but discard child commit message.\n"
+            "- Regenerate commit hashes sequentially with updated parent hashes.\n"
+            "- Deliver complete implementation in native Python with zero dependencies."
+        ),
+        challenge_3_title="Industrial Mini-Project: Complete Zero-Dependency Mini-Git CLI (pygit)",
+        challenge_3_prompt=(
+            "Implement a fully functional zero-dependency mini-Git CLI `pygit.py`:\n"
+            "- `pygit init [path]` — initializes repository with `.pygit` objects and refs directory.\n"
+            "- `pygit hash-object -w <file>` — computes SHA-1, writes compressed blob object.\n"
+            "- `pygit cat-file -p <hash>` — decompresses and displays object payload.\n"
+            "- `pygit write-tree` — captures working directory hierarchy as a tree object.\n"
+            "- `pygit commit-tree <tree> -p <parent> -m <msg>` — writes commit object with timestamp.\n"
+            "- `pygit log` — traverses commit parentage DAG and prints history.\n"
+            "Deliver a complete executable script with 0 external packages."
+        ),
+    ),
+}
+
+def get_phase_challenge(phase_number: int, topic: str = "JavaScript") -> PhaseChallenge:
     """Return the pre-authored challenge set for a given phase number."""
+    if topic.lower() in ("git", "github", "vcs") and phase_number in _GIT_PHASE_CHALLENGES:
+        return _GIT_PHASE_CHALLENGES[phase_number]
     if phase_number not in _PHASE_CHALLENGES:
         raise ValueError(f"No challenge defined for phase {phase_number}")
     return _PHASE_CHALLENGES[phase_number]
@@ -693,50 +1114,88 @@ def generate_chapter_body(phase: Dict[str, Any], chapter_title: str, config: Syn
     lines.append(f"Topics: (part of Phase {phase['number']}) {phase['topics']}")
     lines.append("")
 
-    # Conceptual introduction in Roman Hinglish
     topic_slug = chapter_title.split("—")[0].strip() if "—" in chapter_title else chapter_title.split(":")[0].strip()
-    lines.append(
-        f"Sabse pehle ye samajhna zaroori hai ki... {topic_slug} sirf ek syntactic feature nahi hai — "
-        f"ye JavaScript engine ke andar kuch fundamental karta hai jo tumhare code ke runtime behaviour "
-        f"ko directly impact karta hai."
-    )
-    lines.append("")
-    lines.append(
-        "Technically bolo toh... jab V8 tumhara code parse karta hai, ye ek Abstract Syntax Tree (AST) "
-        "banata hai, phir Ignition Bytecode generate karta hai, aur phir TurboFan JIT compile karta hai "
-        "hot functions ko native machine code me. Har ek step pe kuch invariants hold karne chahiye."
-    )
+    is_git = config.topic.lower() in ("git", "github", "vcs", "version control")
+
+    if is_git:
+        lines.append(
+            f"Sabse pehle ye samajhna zaroori hai ki... {topic_slug} sirf ek terminal command nahi hai — "
+            f"ye Git ke internal Content-Addressable Object Database aur Directed Acyclic Graph (DAG) level "
+            f"pe snapshots create aur manage karta hai jo project history ki cryptographic integrity maintain karta hai."
+        )
+        lines.append("")
+        lines.append(
+            "Technically bolo toh... jab tum commit create karte ho, Git har ek tracked file ka SHA-1 hash compute karta hai, "
+            "compressed Blob objects banata hai, unhe Tree hierarchy me assemble karta hai, aur ek immutable commit pointer emit "
+            "karta hai. Ye delta compression nahi karta — ye pure snapshots store karta hai."
+        )
+    else:
+        lines.append(
+            f"Sabse pehle ye samajhna zaroori hai ki... {topic_slug} sirf ek syntactic feature nahi hai — "
+            f"ye JavaScript engine ke andar kuch fundamental karta hai jo tumhare code ke runtime behaviour "
+            f"ko directly impact karta hai."
+        )
+        lines.append("")
+        lines.append(
+            "Technically bolo toh... jab V8 tumhara code parse karta hai, ye ek Abstract Syntax Tree (AST) "
+            "banata hai, phir Ignition Bytecode generate karta hai, aur phir TurboFan JIT compile karta hai "
+            "hot functions ko native machine code me. Har ek step pe kuch invariants hold karne chahiye."
+        )
     lines.append("")
 
     # Mental Model callout
     lines.append("[MENTAL MODEL]")
-    lines.append(
-        f"Think of the JavaScript engine as a two-phase processor: (1) Parse & Compile — "
-        f"where declarations are hoisted, scope chains are established, and Lexical Environment "
-        f"Records are wired into the prototype of each function scope; (2) Execution — where the "
-        f"Call Stack grows and shrinks as function frames are pushed and popped in LIFO order."
-    )
+    if is_git:
+        lines.append(
+            "Think of Git not as a file change tracker, but as a Content-Addressable Key-Value Object Store "
+            "(under .git/objects) layered with an immutable Directed Acyclic Graph (DAG). The 3 Trees operate as: "
+            "(1) Working Directory (unpacked files on disk), (2) Staging Area / Index (prepared next tree snapshot), "
+            "and (3) HEAD commit (active branch pointer in the immutable DAG)."
+        )
+    else:
+        lines.append(
+            f"Think of the JavaScript engine as a two-phase processor: (1) Parse & Compile — "
+            f"where declarations are hoisted, scope chains are established, and Lexical Environment "
+            f"Records are wired into the prototype of each function scope; (2) Execution — where the "
+            f"Call Stack grows and shrinks as function frames are pushed and popped in LIFO order."
+        )
     lines.append("")
 
     # Engineering Gotcha
     lines.append("[ENGINEERING GOTCHA]")
-    lines.append(
-        "Production code me unexpected bugs aate hain agar tum assume karo ki JavaScript "
-        "synchronous context me koi external resource access immediate hai. Always treat I/O "
-        "as asynchronous — even `fs.readFileSync` blocks the Event Loop entirely."
-    )
+    if is_git:
+        lines.append(
+            "Production code me unexpected bugs aate hain agar tum assume karo ki .gitignore me file add karne se "
+            "wo automatically untrack ho jayegi. Gotcha ye hai ki agar file already index me staged ya committed hai, "
+            "toh .gitignore use ignore nahi karega. Pehle 'git rm --cached <file>' run karna zaroori hai."
+        )
+    else:
+        lines.append(
+            "Production code me unexpected bugs aate hain agar tum assume karo ki JavaScript "
+            "synchronous context me koi external resource access immediate hai. Always treat I/O "
+            "as asynchronous — even `fs.readFileSync` blocks the Event Loop entirely."
+        )
     lines.append("")
 
     # Interview Tip
     if config.audience_focus == "faang_interview":
         lines.append("[INTERVIEW TIP]")
-        lines.append(
-            "In a FAANG system design interview, when asked about JavaScript concurrency, "
-            "immediately anchor on the Event Loop Tick Invariant: 'The Call Stack must be empty "
-            "before any Microtask or Macrotask dequeues.' This single sentence demonstrates "
-            "engine-level understanding and separates candidates who know the spec from those who "
-            "only know the syntax."
-        )
+        if is_git:
+            lines.append(
+                "In a FAANG system design interview, when asked about Git internals, "
+                "immediately anchor on the DAG Invariant and 3-Trees Model: 'Git represents project history as an "
+                "immutable Directed Acyclic Graph (DAG) of commit objects pointing to tree hierarchies and content-addressed blobs. "
+                "Branches are merely 41-byte ref pointers, and merges compute the Lowest Common Ancestor.' This single sentence "
+                "separates senior engineers from surface-level command users."
+            )
+        else:
+            lines.append(
+                "In a FAANG system design interview, when asked about JavaScript concurrency, "
+                "immediately anchor on the Event Loop Tick Invariant: 'The Call Stack must be empty "
+                "before any Microtask or Macrotask dequeues.' This single sentence demonstrates "
+                "engine-level understanding and separates candidates who know the spec from those who "
+                "only know the syntax."
+            )
         lines.append("")
 
     assert_zero_devanagari("\n".join(lines), context=f"chapter '{chapter_title}'")
@@ -759,7 +1218,7 @@ def render_phase(phase_meta: Dict[str, Any], config: SynthesisConfig) -> Synthes
             body_markdown=body,
         ))
 
-    challenge = get_phase_challenge(phase_meta["number"])
+    challenge = get_phase_challenge(phase_meta["number"], topic=config.topic)
     return SynthesizedPhase(
         number=phase_meta["number"],
         title=phase_meta["title"],
@@ -802,7 +1261,7 @@ def serialize_manual_to_markdown(manual: SynthesizedManual) -> str:
     parts: List[str] = []
 
     # Cover header
-    parts.append("# JavaScript: The Complete Reference Manual")
+    parts.append(f"# {manual.topic}: The Complete Reference Manual")
     parts.append("## Architecture & Core Internals — Monochrome High-Density Engineering Edition")
     parts.append("")
     parts.append(f"Generated: {manual.generated_at}")
@@ -849,13 +1308,17 @@ def serialize_manual_to_markdown(manual: SynthesizedManual) -> str:
 
 def synthesize_manual(config: SynthesisConfig) -> SynthesizedManual:
     """Synthesize a complete reference manual from a SynthesisConfig."""
-    phases_meta = [p for p in PHASE_CATALOG if p["number"] in config.phases_to_include]
-    syllabus = generate_syllabus_index(phases_meta, APPENDICES if config.include_appendices else [], topic_name=config.topic)
+    is_git = config.topic.lower() in ("git", "github", "vcs", "version control")
+    catalog = GIT_PHASE_CATALOG if is_git else PHASE_CATALOG
+    appendices_list = GIT_APPENDICES if is_git else APPENDICES
+
+    phases_meta = [p for p in catalog if p["number"] in config.phases_to_include]
+    syllabus = generate_syllabus_index(phases_meta, appendices_list if config.include_appendices else [], topic_name=config.topic)
 
     appendix_index = ""
     if config.include_appendices:
         app_lines = []
-        for app in APPENDICES:
+        for app in appendices_list:
             app_lines.append(f"## {app['title']}")
             app_lines.append(f"Scope: {app['scope']}")
             app_lines.append("")

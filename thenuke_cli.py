@@ -101,31 +101,11 @@ def run_ingest(sources: List[str], corpus_path: Path = CORPUS_PATH) -> Path:
     - HTTP/HTTPS web URLs
     - Local file paths (PDF, PPTX, MP4, PNG, JPG)
     """
-    from scripts.ingestion.unified_corpus import run_unified_ingestion
+    from scripts.ingestion import run_ingestion
 
     logger.info("Stage 1 — Ingestion starting (%d source(s))", len(sources))
-    corpus = run_unified_ingestion(sources)
-
-    corpus_path.parent.mkdir(parents=True, exist_ok=True)
-    corpus_serializable = []
-    for src in corpus:
-        corpus_serializable.append({
-            "source_type": src.source_type,
-            "source_url": src.source_url,
-            "title": src.title,
-            "chapters": [
-                {
-                    "chapter_index": ch.chapter_index,
-                    "title": ch.title,
-                    "start_time": ch.start_time,
-                    "end_time": ch.end_time,
-                    "text": ch.text,
-                }
-                for ch in src.chapters
-            ],
-        })
-    _save_json(corpus_path, {"sources": corpus_serializable, "ingested_at": datetime.now(timezone.utc).isoformat()})
-    logger.info("Corpus written: %s (%d sources)", corpus_path, len(corpus))
+    corpus = run_ingestion(sources, output_corpus_path=corpus_path)
+    logger.info("Corpus written: %s (%d sources)", corpus_path, len(corpus.sources))
     return corpus_path
 
 
