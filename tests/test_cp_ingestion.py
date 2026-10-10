@@ -29,9 +29,14 @@ from scripts.ingestion.cp_problem import (
     CPSample,
     detect_cp_platform,
     extract_atcoder_problem,
+    extract_codechef_problem,
     extract_codeforces_problem,
     extract_cp_problem,
+    extract_geeksforgeeks_problem,
+    extract_hackerrank_problem,
+    extract_interviewbit_problem,
     extract_leetcode_problem,
+    fetch_via_oj_api,
     ingest_cp_problem,
     is_cp_url,
 )
@@ -55,6 +60,13 @@ class TestCPUrlDetection:
             ("https://leetcode.com/problems/median-of-two-sorted-arrays", "leetcode"),
             ("https://atcoder.jp/contests/abc300/tasks/abc300_a", "atcoder"),
             ("https://atcoder.jp/contests/arc150/tasks/arc150_b", "atcoder"),
+            ("https://www.codechef.com/problems/FLOW001", "codechef"),
+            ("https://www.codechef.com/START100/problems/ABC", "codechef"),
+            ("https://www.hackerrank.com/challenges/simple-array-sum/problem", "hackerrank"),
+            ("https://www.hackerrank.com/challenges/fibonacci-modified", "hackerrank"),
+            ("https://www.geeksforgeeks.org/problems/missing-number-in-array1416/1", "geeksforgeeks"),
+            ("https://practice.geeksforgeeks.org/problems/reverse-a-string/1", "geeksforgeeks"),
+            ("https://www.interviewbit.com/problems/max-sum-contiguous-subarray/", "interviewbit"),
         ],
     )
     def test_positive_cp_urls(self, url: str, expected_platform: str):
@@ -465,3 +477,283 @@ class TestCPEndToEndCompilationAndQA:
         assert report.pass1_visual.passed is True
         assert report.pass2_textual.passed is True
         assert len(report.pass2_textual.devanagari_violations) == 0
+
+
+# ===========================================================================
+# 7. CodeChef Problem Extractor Tests
+# ===========================================================================
+
+class TestCodeChefExtractor:
+    """Verifies CodeChef problem ingestion with LaTeX math, limits, and sample testcases."""
+
+    CODECHEF_API_FIXTURE = {
+        "status": "success",
+        "problem_name": "Add Two Numbers",
+        "problem_code": "FLOW001",
+        "max_timelimit": 1.0,
+        "difficulty_rating": "500",
+        "user_tags": ["Implementation", "Basic Math"],
+        "problemComponents": {
+            "statement": "The task is very simple: given two integers $A$ and $B$, write a program to add them and output their sum: $A + B$.",
+            "constraints": "$1 \\le T \\le 1000$\n$0 \\le A, B \\le 10000$",
+            "inputFormat": "The first line contains an integer $T$, the total number of test cases. Then follow $T$ lines, each line contains two integers $A$ and $B$.",
+            "outputFormat": "For each testcase, output the addition of $A$ and $B$ on a new line.",
+            "sampleTestCases": [
+                {
+                    "id": "1",
+                    "input": "3\n1 2\n100 200\n10 40",
+                    "output": "3\n300\n50",
+                    "explanation": "Testcase 1: $1 + 2 = 3$.\nTestcase 2: $100 + 200 = 300$.",
+                }
+            ],
+        },
+        "hints": ["Check for integer boundaries"],
+    }
+
+    def test_extract_codechef_from_json(self):
+        problem = extract_codechef_problem(
+            "https://www.codechef.com/problems/FLOW001",
+            json_data=self.CODECHEF_API_FIXTURE,
+        )
+        assert problem.platform == "codechef"
+        assert problem.problem_id == "FLOW001"
+        assert problem.title == "Add Two Numbers"
+        assert problem.time_limit == "1.0 s"
+        assert problem.difficulty == "500"
+        assert "Implementation" in problem.tags
+        assert "$A + B$" in problem.statement_markdown
+        assert "$1 \\le T \\le 1000$" in problem.constraints
+        assert len(problem.samples) == 1
+        assert problem.samples[0].input_text == "3\n1 2\n100 200\n10 40"
+        assert problem.samples[0].output_text == "3\n300\n50"
+        assert "$1 + 2 = 3$" in problem.samples[0].explanation
+
+    @patch("scripts.ingestion.cp_problem.requests.get")
+    def test_extract_codechef_mock_request(self, mock_get):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = self.CODECHEF_API_FIXTURE
+        mock_get.return_value = mock_resp
+
+        problem = extract_codechef_problem("https://www.codechef.com/START100/problems/FLOW001")
+        assert problem.platform == "codechef"
+        assert problem.problem_id == "FLOW001"
+        assert problem.title == "Add Two Numbers"
+
+
+# ===========================================================================
+# 8. HackerRank Problem Extractor Tests
+# ===========================================================================
+
+class TestHackerRankExtractor:
+    """Verifies HackerRank problem ingestion with Markdown, MathJax, and sample testcases."""
+
+    HACKERRANK_API_FIXTURE = {
+        "model": {
+            "name": "Fibonacci Modified",
+            "difficulty_name": "Medium",
+            "track": {"name": "Dynamic Programming", "track_name": "Algorithms"},
+            "problem_statement": "Given terms $t[i]$ and $t[i+1]$, compute:\n$$t_{i+2} = t_i + (t_{i+1})^2$$\nGiven $t1, t2, n$, compute the $n^{th}$ term.",
+            "input_format": "A single line of three space-separated integers: $t1$, $t2$, and $n$.",
+            "constraints": "- $0 \\le t1, t2 \\le 2$\n- $3 \\le n \\le 20$",
+            "output_format": "Print the $n^{th}$ number in the sequence.",
+            "body_html": "<div class='challenge_problem_statement'><p>Sample</p><pre>0 1 5</pre><p>Output</p><pre>5</pre></div>",
+        }
+    }
+
+    def test_extract_hackerrank_from_json(self):
+        problem = extract_hackerrank_problem(
+            "https://www.hackerrank.com/challenges/fibonacci-modified/problem",
+            json_data=self.HACKERRANK_API_FIXTURE["model"],
+        )
+        assert problem.platform == "hackerrank"
+        assert problem.problem_id == "fibonacci-modified"
+        assert problem.title == "Fibonacci Modified"
+        assert problem.difficulty == "Medium"
+        assert "Algorithms" in problem.tags
+        assert "$$t_{i+2} = t_i + (t_{i+1})^2$$" in problem.statement_markdown
+        assert "$0 \\le t1, t2 \\le 2$" in problem.constraints
+        assert len(problem.samples) == 1
+        assert problem.samples[0].input_text == "0 1 5"
+        assert problem.samples[0].output_text == "5"
+
+    @patch("scripts.ingestion.cp_problem.requests.get")
+    def test_extract_hackerrank_mock_request(self, mock_get):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = self.HACKERRANK_API_FIXTURE
+        mock_get.return_value = mock_resp
+
+        problem = extract_hackerrank_problem("https://www.hackerrank.com/challenges/fibonacci-modified")
+        assert problem.platform == "hackerrank"
+        assert problem.title == "Fibonacci Modified"
+
+
+# ===========================================================================
+# 9. GeeksforGeeks Problem Extractor Tests
+# ===========================================================================
+
+class TestGeeksforGeeksExtractor:
+    """Verifies GeeksforGeeks problem ingestion from Next.js payload with company tags and samples."""
+
+    GFG_NEXT_DATA_FIXTURE = """
+    <!DOCTYPE html>
+    <html>
+    <head><title>Missing in Array | Practice | GeeksforGeeks</title></head>
+    <body>
+    <script id="__NEXT_DATA__" type="application/json">
+    {
+      "props": {
+        "pageProps": {
+          "initialState": {
+            "problemData": {
+              "allData": {
+                "probData": {
+                  "problem_name": "Missing in Array",
+                  "difficulty": "Easy",
+                  "tags": {
+                    "topic_tags": ["Arrays", "Searching"],
+                    "company_tags": ["Amazon", "Microsoft", "Flipkart"]
+                  },
+                  "problem_question": "<p>Given an array <strong>arr[]</strong> of size <strong>n - 1</strong> with numbers from 1 to n.</p><pre><strong>Input:</strong> arr[] = [1, 2, 3, 5]\\n<strong>Output:</strong> 4\\n<strong>Explanation:</strong> Missing element is 4.</pre>",
+                  "constraints_display": "1 &le; n &le; 10^5"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    </script>
+    </body>
+    </html>
+    """
+
+    def test_extract_geeksforgeeks(self):
+        problem = extract_geeksforgeeks_problem(
+            "https://www.geeksforgeeks.org/problems/missing-number-in-array1416/1",
+            html_text=self.GFG_NEXT_DATA_FIXTURE,
+        )
+        assert problem.platform == "geeksforgeeks"
+        assert problem.problem_id == "missing-number-in-array1416"
+        assert problem.title == "Missing in Array"
+        assert problem.difficulty == "Easy"
+        assert "Amazon" in problem.tags
+        assert "Arrays" in problem.tags
+        assert len(problem.samples) == 1
+        assert problem.samples[0].input_text == "arr[] = [1, 2, 3, 5]"
+        assert problem.samples[0].output_text == "4"
+        assert "Missing element is 4" in problem.samples[0].explanation
+
+
+# ===========================================================================
+# 10. InterviewBit Problem Extractor Tests
+# ===========================================================================
+
+class TestInterviewBitExtractor:
+    """Verifies InterviewBit problem ingestion with company tags, constraints, and samples."""
+
+    IB_HTML_FIXTURE = """
+    <!DOCTYPE html>
+    <html>
+    <head><title>Max Sum Contiguous Subarray | InterviewBit</title></head>
+    <body>
+    <script>
+      window.__INTERVIEWBIT__ = window.__INTERVIEWBIT__ || {};
+      window.__INTERVIEWBIT__.problemsData = {
+        "id": 56,
+        "slug": "max-sum-contiguous-subarray",
+        "meta": {
+          "statement": "Max Sum Contiguous Subarray",
+          "difficulty_level": "easy",
+          "companies": ["Facebook", "Amazon", "Microsoft", "Paypal"],
+          "markdown_content": "**Problem Description**<br /><div id=problem_description_markdown_content_value>Find contiguous subarray within array A of length N with largest sum.</div><br /><br />**Problem Constraints**<br /><div id=problem_constraints_markdown_content_value>1 &lt;= N &lt;= 10<sup>6</sup></div><br /><br />**Input Format**<br /><div id=input_format_markdown_content_value>Array A</div><br /><br />**Output Format**<br /><div id=output_format_markdown_content_value>Maximum sum integer</div><br /><br />**Example Input**<br /><div id=example_input_markdown_content_value>Input 1:<pre>A = [1, 2, 3, 4, -10]</pre></div><br /><br />**Example Output**<br /><div id=example_output_markdown_content_value>Output 1:<pre>10</pre></div><br /><br />**Example Explanation**<br /><div id=example_explanation_markdown_content_value>Explanation 1:<pre>Subarray [1, 2, 3, 4] gives 10.</pre></div>"
+        },
+        "hints": ["Consider Kadane's algorithm"],
+        "topic": {"slug": "arrays"}
+      };
+    </script>
+    </body>
+    </html>
+    """
+
+    def test_extract_interviewbit(self):
+        problem = extract_interviewbit_problem(
+            "https://www.interviewbit.com/problems/max-sum-contiguous-subarray/",
+            html_text=self.IB_HTML_FIXTURE,
+        )
+        assert problem.platform == "interviewbit"
+        assert problem.problem_id == "max-sum-contiguous-subarray"
+        assert problem.title == "Max Sum Contiguous Subarray"
+        assert problem.difficulty == "easy"
+        assert "Facebook" in problem.tags
+        assert "arrays" in problem.tags
+        assert "contiguous subarray" in problem.statement_markdown
+        assert len(problem.samples) == 1
+        assert problem.samples[0].input_text == "A = [1, 2, 3, 4, -10]"
+        assert problem.samples[0].output_text == "10"
+        assert "Kadane" in problem.hints[0]
+
+
+# ===========================================================================
+# 11. online-judge-tools Integration Tests
+# ===========================================================================
+
+class TestOnlineJudgeToolsIntegration:
+    """Verifies online-judge-tools (oj-api) helper integration and graceful degradation."""
+
+    @patch("scripts.ingestion.cp_problem.shutil.which")
+    @patch("scripts.ingestion.cp_problem.subprocess.run")
+    def test_fetch_via_oj_api_success(self, mock_run, mock_which):
+        mock_which.return_value = "/usr/local/bin/oj-api"
+        mock_proc = MagicMock()
+        mock_proc.stdout = '{"status": "ok", "messages": [], "result": {"tests": [{"input": "1 2\\n", "output": "3\\n"}]}}'
+        mock_run.return_value = mock_proc
+
+        res = fetch_via_oj_api("https://www.codechef.com/problems/FLOW001")
+        assert res is not None
+        assert "tests" in res
+        assert len(res["tests"]) == 1
+        assert res["tests"][0]["input"] == "1 2\n"
+
+    @patch("scripts.ingestion.cp_problem.shutil.which")
+    def test_fetch_via_oj_api_missing_binary(self, mock_which):
+        mock_which.return_value = None
+        res = fetch_via_oj_api("https://codeforces.com/problemset/problem/1/A")
+        assert res is None
+
+
+# ===========================================================================
+# 12. Unified Multi-Platform Ingestion & Dispatcher Tests
+# ===========================================================================
+
+class TestUnifiedCPDispatcher:
+    """Verifies that extract_cp_problem routes to all 7 platforms correctly."""
+
+    @patch("scripts.ingestion.cp_problem.extract_codechef_problem")
+    def test_route_codechef(self, mock_ext):
+        mock_ext.return_value = MagicMock(platform="codechef")
+        res = extract_cp_problem("https://www.codechef.com/problems/FLOW001")
+        assert res.platform == "codechef"
+        mock_ext.assert_called_once()
+
+    @patch("scripts.ingestion.cp_problem.extract_hackerrank_problem")
+    def test_route_hackerrank(self, mock_ext):
+        mock_ext.return_value = MagicMock(platform="hackerrank")
+        res = extract_cp_problem("https://www.hackerrank.com/challenges/simple-array-sum")
+        assert res.platform == "hackerrank"
+        mock_ext.assert_called_once()
+
+    @patch("scripts.ingestion.cp_problem.extract_geeksforgeeks_problem")
+    def test_route_geeksforgeeks(self, mock_ext):
+        mock_ext.return_value = MagicMock(platform="geeksforgeeks")
+        res = extract_cp_problem("https://www.geeksforgeeks.org/problems/missing-number-in-array1416/1")
+        assert res.platform == "geeksforgeeks"
+        mock_ext.assert_called_once()
+
+    @patch("scripts.ingestion.cp_problem.extract_interviewbit_problem")
+    def test_route_interviewbit(self, mock_ext):
+        mock_ext.return_value = MagicMock(platform="interviewbit")
+        res = extract_cp_problem("https://www.interviewbit.com/problems/max-sum-contiguous-subarray/")
+        assert res.platform == "interviewbit"
+        mock_ext.assert_called_once()

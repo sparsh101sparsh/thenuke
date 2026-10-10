@@ -20,11 +20,14 @@ import html
 import json
 import logging
 import re
+import shutil
+import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
+from bs4 import BeautifulSoup
 import lxml.html
 import requests
 
@@ -278,14 +281,38 @@ ATCODER_URL_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+CODECHEF_URL_PATTERN = re.compile(
+    r"^https?://(?:www\.)?codechef\.com/(?:([a-zA-Z0-9_\-]+)/)?problems/([a-zA-Z0-9_\-]+)",
+    re.IGNORECASE,
+)
+
+HACKERRANK_URL_PATTERN = re.compile(
+    r"^https?://(?:www\.)?hackerrank\.com/(?:contests/[a-zA-Z0-9_\-]+/)?challenges/([a-zA-Z0-9_\-]+)(?:/problem)?",
+    re.IGNORECASE,
+)
+
+GEEKSFORGEEKS_URL_PATTERN = re.compile(
+    r"^https?://(?:www\.|practice\.)?geeksforgeeks\.org/problems/([a-zA-Z0-9_\-]+)",
+    re.IGNORECASE,
+)
+
+INTERVIEWBIT_URL_PATTERN = re.compile(
+    r"^https?://(?:www\.)?interviewbit\.com/problems/([a-zA-Z0-9_\-]+)",
+    re.IGNORECASE,
+)
+
 
 def is_cp_url(url: str) -> bool:
-    """Return True if url is from Codeforces, LeetCode, or AtCoder."""
+    """Return True if url is from Codeforces, LeetCode, AtCoder, CodeChef, HackerRank, GeeksforGeeks, or InterviewBit."""
     clean = url.strip()
     return bool(
         CODEFORCES_URL_PATTERN.match(clean)
         or LEETCODE_URL_PATTERN.match(clean)
         or ATCODER_URL_PATTERN.match(clean)
+        or CODECHEF_URL_PATTERN.match(clean)
+        or HACKERRANK_URL_PATTERN.match(clean)
+        or GEEKSFORGEEKS_URL_PATTERN.match(clean)
+        or INTERVIEWBIT_URL_PATTERN.match(clean)
     )
 
 
@@ -298,6 +325,55 @@ def detect_cp_platform(url: str) -> Optional[str]:
         return "leetcode"
     if ATCODER_URL_PATTERN.match(clean):
         return "atcoder"
+    if CODECHEF_URL_PATTERN.match(clean):
+        return "codechef"
+    if HACKERRANK_URL_PATTERN.match(clean):
+        return "hackerrank"
+    if GEEKSFORGEEKS_URL_PATTERN.match(clean):
+        return "geeksforgeeks"
+    if INTERVIEWBIT_URL_PATTERN.match(clean):
+        return "interviewbit"
+    return None
+
+
+def fetch_via_oj_api(url: str, timeout: int = 10) -> Optional[Dict[str, Any]]:
+    """Fetch problem metadata, limits, and sample testcases via online-judge-tools (oj-api).
+    
+    Uses standard browser User-Agent to avoid bot bans.
+    Returns parsed dictionary or None if unavailable.
+    """
+    clean_url = url.strip()
+    # Normalize CodeChef URLs for oj-api: requires contest prefix like PRACTICE
+    codechef_m = re.match(r"^https?://(?:www\.)?codechef\.com/problems/([a-zA-Z0-9_\-]+)", clean_url)
+    if codechef_m:
+        clean_url = f"https://www.codechef.com/PRACTICE/problems/{codechef_m.group(1)}"
+
+    oj_api_bin = shutil.which("oj-api")
+    if not oj_api_bin:
+        return None
+
+    try:
+        cmd = [
+            oj_api_bin,
+            "--user-agent",
+            BROWSER_HEADERS["User-Agent"],
+            "get-problem",
+            "--full",
+            clean_url,
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        if res.stdout.strip():
+            for line in reversed(res.stdout.splitlines()):
+                line = line.strip()
+                if line.startswith("{") and line.endswith("}"):
+                    try:
+                        data = json.loads(line)
+                        if data.get("status") == "ok":
+                            return data.get("result")
+                    except Exception:
+                        pass
+    except Exception as exc:
+        logger.debug(f"oj-api invocation failed for {url}: {exc}")
     return None
 
 
@@ -319,8 +395,18 @@ def normalize_math_delimiters(text: str) -> str:
     return text
 
 
-def clean_html_formatting_to_markdown(el: lxml.html.HtmlElement) -> str:
-    """Convert an HTML fragment to Markdown while preserving LaTeX math ($...$)."""
+def clean_html_formatting_to_markdown(el: Any) -> str:
+    """Convert an HTML fragment or string to Markdown while preserving LaTeX math ($...)."""
+    if el is None:
+        return ""
+    if isinstance(el, str):
+        if not el.strip():
+            return ""
+        try:
+            el = lxml.html.fromstring(f"<div>{el}</div>")
+        except Exception:
+            return normalize_and_sanitize_markdown(normalize_math_delimiters(el)).strip()
+
     # Replace <var> tags with LaTeX math
     for var_el in el.xpath(".//var"):
         var_text = var_el.text_content().strip()
@@ -359,6 +445,47 @@ def clean_html_formatting_to_markdown(el: lxml.html.HtmlElement) -> str:
     clean_text = normalize_and_sanitize_markdown(clean_text)
 
     return clean_text.strip()
+
+
+def clean_soup_to_markdown(soup_el: Any) -> str:
+    """Convert a BeautifulSoup element or HTML string to Markdown while preserving LaTeX math ($...)."""
+    if soup_el is None:
+        return ""
+    if isinstance(soup_el, str):
+        if not soup_el.strip():
+            return ""
+        soup_el = BeautifulSoup(soup_el, "html.parser")
+
+    for var_el in soup_el.find_all("var"):
+        vt = var_el.get_text().strip()
+        if vt:
+            var_el.replace_with(f"${vt}$")
+
+    for sup_el in soup_el.find_all("sup"):
+        st = sup_el.get_text().strip()
+        sup_el.replace_with(f"^{{{st}}}")
+
+    for sub_el in soup_el.find_all("sub"):
+        st = sub_el.get_text().strip()
+        sub_el.replace_with(f"_{{{st}}}")
+
+    for code_el in soup_el.find_all("code"):
+        ct = code_el.get_text()
+        code_el.replace_with(f"`{ct}`")
+
+    for br in soup_el.find_all("br"):
+        br.replace_with("\n")
+
+    for li in soup_el.find_all("li"):
+        li.insert_before("• ")
+        li.append("\n")
+
+    text = soup_el.get_text()
+    text = html.unescape(text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    text = normalize_math_delimiters(text)
+    text = normalize_and_sanitize_markdown(text)
+    return text.strip()
 
 
 # ---------------------------------------------------------------------------
@@ -721,6 +848,365 @@ def extract_atcoder_problem(url: str, html_text: Optional[str] = None) -> CPProb
 
 
 # ---------------------------------------------------------------------------
+# CodeChef Extractor
+# ---------------------------------------------------------------------------
+
+def extract_codechef_problem(
+    url: str,
+    html_text: Optional[str] = None,
+    json_data: Optional[Dict[str, Any]] = None,
+) -> CPProblem:
+    """Extract CodeChef problem statement, limits, tags, math, and samples."""
+    match = CODECHEF_URL_PATTERN.match(url.strip())
+    if not match:
+        raise ValueError(f"Not a valid CodeChef problem URL: {url}")
+
+    contest_slug = match.group(1) or "PRACTICE"
+    problem_code = match.group(2)
+
+    data = json_data or {}
+    if not data and html_text is None:
+        api_urls = [
+            f"https://www.codechef.com/api/contests/{contest_slug}/problems/{problem_code}",
+            f"https://www.codechef.com/api/contests/PRACTICE/problems/{problem_code}",
+        ]
+        for api_url in api_urls:
+            try:
+                resp = requests.get(api_url, headers=BROWSER_HEADERS, timeout=8)
+                if resp.status_code == 200:
+                    res_json = resp.json()
+                    if res_json.get("problem_name"):
+                        data = res_json
+                        break
+            except Exception as exc:
+                logger.debug(f"CodeChef API request to {api_url} failed: {exc}")
+
+    title = data.get("problem_name") or problem_code
+    max_tl = data.get("max_timelimit")
+    time_limit = f"{max_tl} s" if max_tl else "1.0 s"
+    memory_limit = "256 MB"
+    diff = str(data.get("difficulty_rating") or "")
+    tags = list(data.get("user_tags") or data.get("computed_tags") or [])
+    hints = list(data.get("hints") or [])
+
+    pc = data.get("problemComponents") or {}
+    statement_raw = pc.get("statement") or data.get("body") or ""
+    constraints_raw = pc.get("constraints") or ""
+    input_format_raw = pc.get("inputFormat") or ""
+    output_format_raw = pc.get("outputFormat") or ""
+    sample_cases_data = pc.get("sampleTestCases") or []
+
+    samples: List[CPSample] = []
+    if sample_cases_data:
+        for idx, sc in enumerate(sample_cases_data, start=1):
+            in_t = str(sc.get("input", "")).strip()
+            out_t = str(sc.get("output", "")).strip()
+            exp_t = clean_soup_to_markdown(sc.get("explanation", "")).strip()
+            samples.append(CPSample(sample_index=idx, input_text=in_t, output_text=out_t, explanation=exp_t))
+
+    if (not samples or not statement_raw) and html_text:
+        soup = BeautifulSoup(html_text, "html.parser")
+        if not title or title == problem_code:
+            h1 = soup.find("h1")
+            if h1:
+                title = h1.get_text().strip()
+        body_div = soup.find("div", class_="problem-statement") or soup.find("div", class_="statement")
+        if body_div:
+            statement_raw = clean_soup_to_markdown(body_div)
+
+    if not samples:
+        oj_res = fetch_via_oj_api(url)
+        if oj_res and oj_res.get("tests"):
+            for idx, t in enumerate(oj_res["tests"], start=1):
+                samples.append(CPSample(
+                    sample_index=idx,
+                    input_text=t.get("input", "").strip(),
+                    output_text=t.get("output", "").strip(),
+                ))
+
+    statement_md = clean_soup_to_markdown(statement_raw)
+    constraints_md = clean_soup_to_markdown(constraints_raw)
+    input_md = clean_soup_to_markdown(input_format_raw)
+    output_md = clean_soup_to_markdown(output_format_raw)
+
+    return CPProblem(
+        platform="codechef",
+        url=url,
+        problem_id=problem_code,
+        title=title,
+        time_limit=time_limit,
+        memory_limit=memory_limit,
+        tags=tags,
+        difficulty=diff,
+        statement_markdown=statement_md,
+        input_specification=input_md,
+        output_specification=output_md,
+        constraints=constraints_md,
+        samples=samples,
+        hints=hints,
+    )
+
+
+# ---------------------------------------------------------------------------
+# HackerRank Extractor
+# ---------------------------------------------------------------------------
+
+def extract_hackerrank_problem(
+    url: str,
+    html_text: Optional[str] = None,
+    json_data: Optional[Dict[str, Any]] = None,
+) -> CPProblem:
+    """Extract HackerRank problem statement, limits, constraints, and samples."""
+    match = HACKERRANK_URL_PATTERN.match(url.strip())
+    if not match:
+        raise ValueError(f"Not a valid HackerRank problem URL: {url}")
+
+    slug = match.group(1)
+    data = json_data or {}
+
+    if not data and html_text is None:
+        api_url = f"https://www.hackerrank.com/rest/contests/master/challenges/{slug}"
+        try:
+            resp = requests.get(api_url, headers=BROWSER_HEADERS, timeout=8)
+            if resp.status_code == 200:
+                data = resp.json().get("model", {})
+        except Exception as exc:
+            logger.debug(f"HackerRank REST API request failed: {exc}")
+
+    title = data.get("name") or slug.replace("-", " ").title()
+    difficulty = data.get("difficulty_name") or "Medium"
+    track = data.get("track") or {}
+    tags: List[str] = []
+    if track.get("track_name"):
+        tags.append(track["track_name"])
+    if track.get("name"):
+        tags.append(track["name"])
+
+    statement_md = data.get("problem_statement") or ""
+    input_spec = data.get("input_format") or ""
+    constraints = data.get("constraints") or ""
+    output_spec = data.get("output_format") or ""
+    body_html = data.get("body_html") or html_text or ""
+
+    samples: List[CPSample] = []
+    if body_html:
+        soup = BeautifulSoup(body_html, "html.parser")
+        pres = soup.find_all("pre")
+        if len(pres) >= 2:
+            idx = 1
+            for i in range(0, len(pres) - 1, 2):
+                in_t = pres[i].get_text().strip()
+                out_t = pres[i+1].get_text().strip()
+                samples.append(CPSample(sample_index=idx, input_text=in_t, output_text=out_t))
+                idx += 1
+
+    if not samples:
+        oj_res = fetch_via_oj_api(url)
+        if oj_res and oj_res.get("tests"):
+            for idx, t in enumerate(oj_res["tests"], start=1):
+                samples.append(CPSample(
+                    sample_index=idx,
+                    input_text=t.get("input", "").strip(),
+                    output_text=t.get("output", "").strip(),
+                ))
+
+    statement_md = normalize_and_sanitize_markdown(normalize_math_delimiters(statement_md))
+    constraints = normalize_and_sanitize_markdown(normalize_math_delimiters(constraints))
+    input_spec = normalize_and_sanitize_markdown(normalize_math_delimiters(input_spec))
+    output_spec = normalize_and_sanitize_markdown(normalize_math_delimiters(output_spec))
+
+    return CPProblem(
+        platform="hackerrank",
+        url=url,
+        problem_id=slug,
+        title=title,
+        time_limit="2.0 s",
+        memory_limit="512 MB",
+        tags=tags,
+        difficulty=difficulty,
+        statement_markdown=statement_md,
+        input_specification=input_spec,
+        output_specification=output_spec,
+        constraints=constraints,
+        samples=samples,
+    )
+
+
+# ---------------------------------------------------------------------------
+# GeeksforGeeks Extractor
+# ---------------------------------------------------------------------------
+
+def extract_geeksforgeeks_problem(url: str, html_text: Optional[str] = None) -> CPProblem:
+    """Extract GeeksforGeeks problem statement, constraints, company/topic tags, and samples."""
+    match = GEEKSFORGEEKS_URL_PATTERN.match(url.strip())
+    if not match:
+        raise ValueError(f"Not a valid GeeksforGeeks problem URL: {url}")
+
+    slug = match.group(1)
+
+    if html_text is None:
+        resp = requests.get(url, headers=BROWSER_HEADERS, timeout=8)
+        resp.raise_for_status()
+        html_text = resp.text
+
+    title = slug.replace("-", " ").title()
+    difficulty = "Medium"
+    tags: List[str] = []
+    question_html = ""
+    constraints = ""
+
+    soup = BeautifulSoup(html_text, "html.parser")
+    next_script = soup.find("script", id="__NEXT_DATA__")
+    if next_script and next_script.string:
+        try:
+            ndata = json.loads(next_script.string)
+            pdata = ndata.get("props", {}).get("pageProps", {}).get("initialState", {}).get("problemData", {}).get("allData", {}).get("probData", {})
+            if pdata:
+                title = pdata.get("problem_name") or title
+                difficulty = pdata.get("difficulty") or difficulty
+                tags_obj = pdata.get("tags") or {}
+                topic_tags = tags_obj.get("topic_tags", []) if isinstance(tags_obj, dict) else []
+                comp_tags = tags_obj.get("company_tags", []) if isinstance(tags_obj, dict) else []
+                tags = list(topic_tags) + list(comp_tags)
+                question_html = pdata.get("problem_question") or ""
+                constraints = pdata.get("constraints_display") or ""
+        except Exception as exc:
+            logger.debug(f"Error parsing GFG __NEXT_DATA__: {exc}")
+
+    if not question_html:
+        q_div = soup.find("div", class_="problems_problem_content__Xm_eO") or soup.find("div", class_="problem-statement")
+        if q_div:
+            question_html = str(q_div)
+
+    samples: List[CPSample] = []
+    if question_html:
+        q_soup = BeautifulSoup(question_html, "html.parser")
+        pres = q_soup.find_all("pre")
+        for idx, pre in enumerate(pres, start=1):
+            txt = pre.get_text()
+            if "Input:" in txt or "Output:" in txt:
+                in_m = re.search(r"Input:\s*(.*?)(?:Output:|$)", txt, re.DOTALL)
+                out_m = re.search(r"Output:\s*(.*?)(?:Explanation:|$)", txt, re.DOTALL)
+                exp_m = re.search(r"Explanation:\s*(.*?)$", txt, re.DOTALL)
+                in_v = in_m.group(1).strip() if in_m else ""
+                out_v = out_m.group(1).strip() if out_m else ""
+                exp_v = exp_m.group(1).strip() if exp_m else ""
+                samples.append(CPSample(sample_index=idx, input_text=in_v, output_text=out_v, explanation=exp_v))
+                pre.decompose()
+
+        statement_md = clean_soup_to_markdown(q_soup)
+    else:
+        statement_md = clean_soup_to_markdown(soup)
+
+    return CPProblem(
+        platform="geeksforgeeks",
+        url=url,
+        problem_id=slug,
+        title=title,
+        time_limit="1.0 s",
+        memory_limit="256 MB",
+        tags=tags,
+        difficulty=difficulty,
+        statement_markdown=statement_md,
+        constraints=clean_soup_to_markdown(constraints),
+        samples=samples,
+    )
+
+
+# ---------------------------------------------------------------------------
+# InterviewBit Extractor
+# ---------------------------------------------------------------------------
+
+def extract_interviewbit_problem(url: str, html_text: Optional[str] = None) -> CPProblem:
+    """Extract InterviewBit problem statement, constraints, companies, and samples."""
+    match = INTERVIEWBIT_URL_PATTERN.match(url.strip())
+    if not match:
+        raise ValueError(f"Not a valid InterviewBit problem URL: {url}")
+
+    slug = match.group(1)
+
+    if html_text is None:
+        resp = requests.get(url, headers=BROWSER_HEADERS, timeout=8)
+        resp.raise_for_status()
+        html_text = resp.text
+
+    title = slug.replace("-", " ").title()
+    difficulty = "Medium"
+    tags: List[str] = []
+    statement_md = ""
+    constraints_md = ""
+    input_md = ""
+    output_md = ""
+    hints: List[str] = []
+    samples: List[CPSample] = []
+
+    m = re.search(r"window\.__INTERVIEWBIT__\.problemsData\s*=\s*(\{.+?\});", html_text, re.DOTALL)
+    if m:
+        try:
+            pdata = json.loads(m.group(1))
+            meta = pdata.get("meta") or {}
+            title = meta.get("statement") or title
+            difficulty = meta.get("difficulty_level") or difficulty
+            tags = list(meta.get("companies") or [])
+            if pdata.get("topic", {}).get("slug"):
+                tags.append(pdata["topic"]["slug"])
+            hints = list(pdata.get("hints") or [])
+
+            raw_md = meta.get("markdown_content") or ""
+            if raw_md:
+                soup = BeautifulSoup(raw_md, "html.parser")
+                desc_div = soup.find("div", id="problem_description_markdown_content_value")
+                const_div = soup.find("div", id="problem_constraints_markdown_content_value")
+                in_div = soup.find("div", id="input_format_markdown_content_value")
+                out_div = soup.find("div", id="output_format_markdown_content_value")
+                ex_in_div = soup.find("div", id="example_input_markdown_content_value")
+                ex_out_div = soup.find("div", id="example_output_markdown_content_value")
+                ex_exp_div = soup.find("div", id="example_explanation_markdown_content_value")
+
+                if desc_div:
+                    statement_md = clean_soup_to_markdown(desc_div)
+                if const_div:
+                    constraints_md = clean_soup_to_markdown(const_div)
+                if in_div:
+                    input_md = clean_soup_to_markdown(in_div)
+                if out_div:
+                    output_md = clean_soup_to_markdown(out_div)
+
+                in_pres = [p.get_text().strip() for p in ex_in_div.find_all("pre")] if ex_in_div else []
+                out_pres = [p.get_text().strip() for p in ex_out_div.find_all("pre")] if ex_out_div else []
+                exp_pres = [p.get_text().strip() for p in ex_exp_div.find_all("pre")] if ex_exp_div else []
+
+                for idx in range(max(len(in_pres), len(out_pres))):
+                    inp = in_pres[idx] if idx < len(in_pres) else ""
+                    outp = out_pres[idx] if idx < len(out_pres) else ""
+                    exp = exp_pres[idx] if idx < len(exp_pres) else ""
+                    samples.append(CPSample(sample_index=idx + 1, input_text=inp, output_text=outp, explanation=exp))
+        except Exception as exc:
+            logger.debug(f"Error parsing InterviewBit problemsData JSON: {exc}")
+
+    if not statement_md:
+        soup = BeautifulSoup(html_text, "html.parser")
+        statement_md = clean_soup_to_markdown(soup)
+
+    return CPProblem(
+        platform="interviewbit",
+        url=url,
+        problem_id=slug,
+        title=title,
+        time_limit="1.0 s",
+        memory_limit="256 MB",
+        tags=tags,
+        difficulty=difficulty,
+        statement_markdown=statement_md,
+        input_specification=input_md,
+        output_specification=output_md,
+        constraints=constraints_md,
+        samples=samples,
+        hints=hints,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Unified Extraction Dispatcher
 # ---------------------------------------------------------------------------
 
@@ -733,6 +1219,14 @@ def extract_cp_problem(url: str, html_text: Optional[str] = None) -> CPProblem:
         return extract_leetcode_problem(url, html_text=html_text)
     elif platform == "atcoder":
         return extract_atcoder_problem(url, html_text=html_text)
+    elif platform == "codechef":
+        return extract_codechef_problem(url, html_text=html_text)
+    elif platform == "hackerrank":
+        return extract_hackerrank_problem(url, html_text=html_text)
+    elif platform == "geeksforgeeks":
+        return extract_geeksforgeeks_problem(url, html_text=html_text)
+    elif platform == "interviewbit":
+        return extract_interviewbit_problem(url, html_text=html_text)
     else:
         raise ValueError(f"Unsupported competitive programming platform for URL: {url}")
 

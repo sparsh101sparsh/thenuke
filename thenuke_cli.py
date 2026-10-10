@@ -484,6 +484,12 @@ def build_parser() -> argparse.ArgumentParser:
     ma_p.add_argument("--output", default=None, help="Target PDF path")
     ma_p.add_argument("--interactive", action="store_true", help="Run interactive /grill-me clarification interview")
 
+    # fetch-problem — CP Problem Ingestion
+    fp_p = sub.add_parser("fetch-problem", help="Fetch a competitive programming problem with full math & samples")
+    fp_p.add_argument("url", help="Problem URL (Codeforces, LeetCode, AtCoder, CodeChef, HackerRank, GFG, InterviewBit)")
+    fp_p.add_argument("--output", "-o", default=None, help="Output path for structured Markdown or JSON")
+    fp_p.add_argument("--json", action="store_true", help="Output raw JSON metadata instead of Markdown")
+
     return parser
 
 
@@ -547,6 +553,22 @@ def main() -> None:
 
     elif args.command == "clean":
         run_cleanup(SCRATCH_DIR, confirm=not args.yes)
+
+    elif args.command == "fetch-problem":
+        from scripts.ingestion.cp_problem import extract_cp_problem
+        problem = extract_cp_problem(args.url)
+        if args.json:
+            out_str = json.dumps(problem.to_dict(), indent=2)
+        else:
+            out_str = problem.to_structured_markdown()
+        if args.output:
+            out_p = Path(args.output)
+            out_p.parent.mkdir(parents=True, exist_ok=True)
+            out_p.write_text(out_str, encoding="utf-8")
+            print(f"Saved problem to {out_p}")
+        else:
+            print(out_str)
+        sys.exit(0)
 
 
 if __name__ == "__main__":

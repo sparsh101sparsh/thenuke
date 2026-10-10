@@ -3,11 +3,12 @@ name: thenuke
 description: >
   thenuke is a multi-agent documentation engine that ingests multi-modal learning
   resources (YouTube videos/playlists, web documentation, local PDFs/PPTs/videos/screenshots,
-  and Competitive Programming problems from Codeforces, LeetCode, and AtCoder)
+  and Competitive Programming problems from Codeforces, LeetCode, AtCoder, CodeChef,
+  HackerRank, GeeksforGeeks, and InterviewBit via online-judge-tools and official APIs)
   and synthesizes high-density engineering reference manuals in 100% Roman-alphabet Hinglish
   (zero Devanagari characters) with PyMuPDF vector diagrams, monochrome aesthetic, and
   mandatory author branding (@issparsh @sumitsingh097 with the official X/Twitter glyph).
-version: 2.1.0
+version: 2.2.0
 authors:
   - "@issparsh"
   - "@sumitsingh097"
@@ -20,9 +21,14 @@ tags:
   - vector-diagrams
   - reportlab
   - competitive-programming
+  - online-judge-tools
   - codeforces
   - leetcode
   - atcoder
+  - codechef
+  - hackerrank
+  - geeksforgeeks
+  - interviewbit
   - latex-math
   - youtube-ingestion
   - web-crawler
@@ -51,7 +57,13 @@ python thenuke_cli.py run \
   "/Users/yourname/Downloads/JS_Notes.pdf"
 
 # 🏆 Competitive Programming Problem Reference Manual:
-# Turns Codeforces, LeetCode, or AtCoder problems into clean study documents
+# Inspect/fetch problem statement with full math and samples:
+python thenuke_cli.py fetch-problem "https://www.codechef.com/problems/FLOW001"
+python thenuke_cli.py fetch-problem "https://www.hackerrank.com/challenges/simple-array-sum/problem"
+python thenuke_cli.py fetch-problem "https://www.geeksforgeeks.org/problems/missing-number-in-array1416/1"
+python thenuke_cli.py fetch-problem "https://www.interviewbit.com/problems/max-sum-contiguous-subarray/"
+
+# Full compilation to production-grade PDF:
 python thenuke_cli.py run "https://codeforces.com/problemset/problem/1915/C" --preset senior_architect_faang --skip-cleanup
 
 # Individual stages
@@ -228,12 +240,34 @@ python thenuke_cli.py clean
 | `resource_parity` | resource_parity | balanced | production_engineering |
 | `senior_architect_faang` | senior_architect | strict_need_based | faang_interview |
 
+## 🏆 Multi-Platform Competitive Programming (CP) Ingestion Engine
+
+`thenuke` provides a high-fidelity competitive programming problem ingestion engine across 7 major coding platforms:
+
+| Platform | Best Strategy | Extraction Pipeline |
+| :--- | :--- | :--- |
+| **Codeforces** | Official API + DOM Parser | Extracts tags, rating, statement with `$$$...$$$` LaTeX math, multiline `test-example-line` samples, `oj-api` fallback |
+| **LeetCode** | Official GraphQL API | Queries `question(titleSlug)` returning clean statement, topicTags, difficulty, hints, constraints, code stubs |
+| **AtCoder** | DOM Parser (`.lang-en`) | Extracts limits, `<var>...</var>` / `\(...\)` LaTeX math, constraints, sample inputs/outputs, Kenkoooo API fallback |
+| **CodeChef** | Official JSON API | Queries `api/contests/PRACTICE/problems/{code}`, extracts `problemComponents` (statement, constraints, input/output formats, `sampleTestCases`), hints |
+| **HackerRank** | Official REST API | Queries `rest/contests/master/challenges/{slug}`, extracts native Markdown statement with LaTeX math (`$$t_{i+2} = ...$$`), constraints, sample cases |
+| **GeeksforGeeks** | Next.js `__NEXT_DATA__` | Extracts `probData` with company tags (Amazon, Microsoft, Flipkart, etc.), topic tags, formatted examples, constraints, expected complexities |
+| **InterviewBit** | Embedded `problemsData` | Extracts `meta.markdown_content` (description, constraints, input/output, example test cases), companies, hints |
+
+### `online-judge-tools` (`oj` / `oj-api`) Integration
+- `oj-api get-problem` CLI and python library `onlinejudge` are integrated as an automated testcase and limit verifier across AtCoder, Codeforces, CodeChef, and HackerRank.
+- Uses browser user-agent (`BROWSER_HEADERS["User-Agent"]`) to avoid Cloudflare/bot bans.
+- Normalizes contest paths (e.g. `codechef.com/PRACTICE/...`) automatically.
+- CLI inspection helper: `python thenuke_cli.py fetch-problem <url> [--json]`.
+
 ## Environment Requirements
 
 | Tool | Version | Notes |
 |------|---------|-------|
 | Python | 3.10+ | 3.14 tested on Apple M4 |
 | PyMuPDF | 1.24+ | `pip install pymupdf` |
+| online-judge-tools | 11.5+ | `pip install online-judge-tools` (`oj`, `oj-api`) |
+| beautifulsoup4 | 4.15+ | `pip install beautifulsoup4` |
 | faster-whisper | 1.2.1+ | `pip install faster-whisper` |
 | ffmpeg | 7.0+ | `/opt/homebrew/bin/ffmpeg` |
 | yt-dlp | latest | `pip install yt-dlp` |
