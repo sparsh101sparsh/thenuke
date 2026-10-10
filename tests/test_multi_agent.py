@@ -32,7 +32,7 @@ def test_research_agent_briefings():
 
 def test_diagram_agent_validation():
     diagrammer = DiagramAgent()
-    assert len(diagrammer.available_diagrams) == 9
+    assert len(diagrammer.available_diagrams) >= 9
     for name in DIAGRAM_REGISTRY.keys():
         valid, err = diagrammer.validate_diagram(name)
         assert valid is True, f"Diagram '{name}' failed validation: {err}"

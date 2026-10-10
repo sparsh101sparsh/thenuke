@@ -781,6 +781,252 @@ def create_merge_conflict_diagram() -> Drawing:
 
 
 # ---------------------------------------------------------------------------
+# 10. Sleep Architecture & Ultradian Cycles Diagram
+# ---------------------------------------------------------------------------
+def create_sleep_architecture_diagram() -> Drawing:
+    """Renders the 90-Minute Sleep Architecture & Ultradian Cycles."""
+    height = 160.0
+    d, g = _make_canvas_frame(
+        height,
+        "Figure 1.1: Human Sleep Architecture & Ultradian 90-Minute Cycles",
+        "NREM Slow-Wave vs REM Distribution",
+    )
+
+    cycle_w = 100.0
+    x_start = 20.0
+    y_base = 35.0
+
+    cycles = [
+        ("Cycle 1 (0:00 - 1:30)", 70, 20),
+        ("Cycle 2 (1:30 - 3:00)", 55, 35),
+        ("Cycle 3 (3:00 - 4:30)", 40, 50),
+        ("Cycle 4 (4:30 - 6:00)", 25, 65),
+    ]
+
+    for i, (title, nrem_h, rem_h) in enumerate(cycles):
+        cx = x_start + i * 110.0
+        g.add(Rect(cx, y_base, cycle_w, 90, fillColor=COLOR_BG_BOX, strokeColor=COLOR_HAIRLINE, strokeWidth=0.75, rx=2, ry=2))
+        g.add(Rect(cx, y_base + 72, cycle_w, 18, fillColor=COLOR_BG_SHADED, strokeColor=COLOR_HAIRLINE, strokeWidth=0.5))
+        g.add(String(cx + 6, y_base + 78, title, fontName="Helvetica-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+
+        # Deep NREM Bar (Charcoal)
+        g.add(Rect(cx + 10, y_base + 20, 35, nrem_h * 0.65, fillColor=COLOR_CHARCOAL, strokeColor=COLOR_BLACK, strokeWidth=0.5))
+        g.add(String(cx + 12, y_base + 8, "NREM SWS", fontName="Courier-Bold", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+
+        # REM Bar (Light shaded with border)
+        g.add(Rect(cx + 55, y_base + 20, 35, rem_h * 0.65, fillColor=COLOR_BG_SHADED, strokeColor=COLOR_BLACK, strokeWidth=0.75))
+        g.add(String(cx + 62, y_base + 8, "REM DREAM", fontName="Courier-Bold", fontSize=6.0, fillColor=COLOR_BLACK))
+
+    g.add(String(20, 14, "INVARIANT: Early night is optimized for anatomical & memory consolidation (SWS); late night for emotional & associative synthesis (REM).", fontName="Helvetica-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+    return d
+
+
+# ---------------------------------------------------------------------------
+# 11. Hippocampal-Neocortical Memory Transfer Diagram
+# ---------------------------------------------------------------------------
+def create_memory_transfer_diagram() -> Drawing:
+    """Renders the Hippocampal-Neocortical Memory Consolidation Protocol."""
+    height = 150.0
+    d, g = _make_canvas_frame(
+        height,
+        "Figure 2.1: Hippocampal-Neocortical Memory Consolidation Pipeline",
+        "Slow-Wave Sleep (<1 Hz) & Spindle (11-16 Hz) Coupling",
+    )
+
+    y_box = 35.0
+
+    # 1. Hippocampus Box (Left - Volatile Cache / Temporary RAM)
+    g.add(Rect(20, y_box, 135, 85, fillColor=COLOR_BG_BOX, strokeColor=COLOR_BLACK, strokeWidth=1.0, rx=3, ry=3))
+    g.add(Rect(20, y_box + 67, 135, 18, fillColor=COLOR_BG_SHADED, strokeColor=COLOR_HAIRLINE, strokeWidth=0.5))
+    g.add(String(26, y_box + 73, "HIPPOCAMPUS (Volatile RAM)", fontName="Helvetica-Bold", fontSize=7.0, fillColor=COLOR_BLACK))
+    g.add(String(26, y_box + 50, "• Short-term memory buffer", fontName="Helvetica", fontSize=6.5, fillColor=COLOR_CHARCOAL))
+    g.add(String(26, y_box + 38, "• Vulnerable to overwrite", fontName="Helvetica", fontSize=6.5, fillColor=COLOR_CHARCOAL))
+    g.add(String(26, y_box + 26, "• High turnover rate", fontName="Helvetica", fontSize=6.5, fillColor=COLOR_CHARCOAL))
+    g.add(String(26, y_box + 12, "STATUS: Cache Full at Bedtime", fontName="Courier-Bold", fontSize=6.0, fillColor=COLOR_MUTED))
+
+    # 2. Middle Channel (The Transfer Bus)
+    _draw_arrow(g, 160, y_box + 50, 310, y_box + 50, color=COLOR_BLACK, stroke_width=1.5, head_len=8, head_width=5)
+    g.add(Rect(175, y_box + 56, 120, 22, fillColor=COLOR_BG_SHADED, strokeColor=COLOR_BLACK, strokeWidth=0.75, rx=2, ry=2))
+    g.add(String(182, y_box + 68, "SLOW-WAVE OSCILLATIONS (<1 Hz)", fontName="Courier-Bold", fontSize=6.0, fillColor=COLOR_BLACK))
+    g.add(String(190, y_box + 59, "+ SLEEP SPINDLES (11-16 Hz)", fontName="Courier-Bold", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+
+    # Feedback / Clear Cache Arrow
+    _draw_arrow(g, 310, y_box + 20, 160, y_box + 20, color=COLOR_MUTED, stroke_width=1.0, head_len=6, head_width=4)
+    g.add(String(185, y_box + 10, "CACHE FLUSH (Frees Next-Day Buffer)", fontName="Courier", fontSize=5.5, fillColor=COLOR_MUTED))
+
+    # 3. Neocortex Box (Right - Distributed Long-Term Storage / HDD)
+    g.add(Rect(315, y_box, 140, 85, fillColor=COLOR_BG_BOX, strokeColor=COLOR_BLACK, strokeWidth=1.0, rx=3, ry=3))
+    g.add(Rect(315, y_box + 67, 140, 18, fillColor=COLOR_BG_SHADED, strokeColor=COLOR_HAIRLINE, strokeWidth=0.5))
+    g.add(String(321, y_box + 73, "NEOCORTEX (Permanent Storage)", fontName="Helvetica-Bold", fontSize=7.0, fillColor=COLOR_BLACK))
+    g.add(String(321, y_box + 50, "• Infinite distributed capacity", fontName="Helvetica", fontSize=6.5, fillColor=COLOR_CHARCOAL))
+    g.add(String(321, y_box + 38, "• Schema integration & synaptogenesis", fontName="Helvetica", fontSize=6.5, fillColor=COLOR_CHARCOAL))
+    g.add(String(321, y_box + 26, "• Immune to simple overwrite", fontName="Helvetica", fontSize=6.5, fillColor=COLOR_CHARCOAL))
+    g.add(String(321, y_box + 12, "STATUS: Consolidated Storage", fontName="Courier-Bold", fontSize=6.0, fillColor=COLOR_BLACK))
+
+    g.add(String(20, 12, "PROVEN INVARIANT: Sleep deprivation after learning drops retention by 40% (Nature Neuroscience 10:385).", fontName="Helvetica-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+    return d
+
+
+# ---------------------------------------------------------------------------
+# 12. Adenosine Sleep Pressure & Caffeine Blockade Diagram
+# ---------------------------------------------------------------------------
+def create_adenosine_caffeine_diagram() -> Drawing:
+    """Renders the Adenosine Homeostatic Sleep Pressure & Caffeine Antagonism Curve."""
+    height = 155.0
+    d, g = _make_canvas_frame(
+        height,
+        "Figure 3.1: Adenosine Sleep Pressure & Competitive Caffeine Blockade",
+        "Two-Process Model: Process S vs Receptor Antagonism",
+    )
+
+    y_base = 32.0
+
+    # Axes
+    g.add(Line(35, y_base, 450, y_base, strokeColor=COLOR_BLACK, strokeWidth=1.0))
+    g.add(Line(35, y_base, 35, y_base + 95, strokeColor=COLOR_BLACK, strokeWidth=1.0))
+    g.add(String(20, y_base + 88, "High", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_MUTED))
+    g.add(String(20, y_base, "Low", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_MUTED))
+    g.add(String(40, y_base - 10, "7:00 AM (Awake)", fontName="Courier", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(160, y_base - 10, "1:00 PM (Coffee)", fontName="Courier", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(290, y_base - 10, "7:00 PM (Evening)", fontName="Courier", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(390, y_base - 10, "11:00 PM (Sleep Crash)", fontName="Courier-Bold", fontSize=6.0, fillColor=COLOR_BLACK))
+
+    # Adenosine Accumulation Curve
+    pts = [
+        (35, y_base + 5), (90, y_base + 22), (160, y_base + 45),
+        (230, y_base + 65), (310, y_base + 78), (390, y_base + 90)
+    ]
+    for idx in range(len(pts) - 1):
+        g.add(Line(pts[idx][0], pts[idx][1], pts[idx+1][0], pts[idx+1][1], strokeColor=COLOR_BLACK, strokeWidth=1.5))
+    g.add(String(170, y_base + 80, "Real Adenosine Pressure (Process S)", fontName="Helvetica-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+
+    # Caffeine Blockade Shadow (Dotted line effect)
+    c_pts = [
+        (160, y_base + 45), (200, y_base + 25), (250, y_base + 20),
+        (300, y_base + 35), (350, y_base + 60), (390, y_base + 90)
+    ]
+    for idx in range(len(c_pts) - 1):
+        g.add(Line(c_pts[idx][0], c_pts[idx][1], c_pts[idx+1][0], c_pts[idx+1][1], strokeColor=COLOR_MUTED, strokeWidth=1.0))
+    g.add(String(205, y_base + 12, "Perceived Fatigue (Caffeine Masking)", fontName="Helvetica-Oblique", fontSize=6.0, fillColor=COLOR_MUTED))
+
+    # Crash Arrow at 11 PM
+    _draw_arrow(g, 390, y_base + 88, 390, y_base + 25, color=COLOR_CHARCOAL, stroke_width=1.2, head_len=6, head_width=4)
+    g.add(String(330, y_base + 45, "CAFFEINE CRASH: Liver clears drug,", fontName="Courier-Bold", fontSize=5.5, fillColor=COLOR_BLACK))
+    g.add(String(330, y_base + 37, "accumulated adenosine floods brain.", fontName="Courier", fontSize=5.5, fillColor=COLOR_CHARCOAL))
+
+    # Explanatory Callout Box
+    g.add(Rect(310, y_base + 55, 140, 35, fillColor=COLOR_BG_BOX, strokeColor=COLOR_BLACK, strokeWidth=0.5, rx=2, ry=2))
+    g.add(String(315, y_base + 78, "RECEPTOR ANTAGONISM:", fontName="Helvetica-Bold", fontSize=6.0, fillColor=COLOR_BLACK))
+    g.add(String(315, y_base + 68, "Caffeine binds A1/A2A receptors without", fontName="Helvetica", fontSize=5.5, fillColor=COLOR_CHARCOAL))
+    g.add(String(315, y_base + 60, "activating them. Adenosine continues to climb.", fontName="Helvetica", fontSize=5.5, fillColor=COLOR_CHARCOAL))
+
+    g.add(String(20, 10, "PHARMACOKINETICS: Caffeine half-life is 5-7 hours; quarter-life 10-12 hours. Afternoon coffee impairs Stage 3/4 sleep.", fontName="Helvetica-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+    return d
+
+
+# ---------------------------------------------------------------------------
+# 13. Natural Killer (NK) Cell Immunological Collapse Diagram
+# ---------------------------------------------------------------------------
+def create_immune_killer_cells_diagram() -> Drawing:
+    """Renders the Natural Killer (NK) Cell Immunological Vulnerability Diagram."""
+    height = 150.0
+    d, g = _make_canvas_frame(
+        height,
+        "Figure 4.1: Natural Killer (NK) Cell Cytotoxic Collapse (4-Hour Sleep Loss)",
+        "Empirical Benchmark: 70% Reduction in Innate Tumor Clearance",
+    )
+
+    y_base = 35.0
+
+    # Left Container: Baseline 8 Hours of Sleep
+    g.add(Rect(35, y_base, 180, 85, fillColor=COLOR_BG_BOX, strokeColor=COLOR_HAIRLINE, strokeWidth=0.75, rx=3, ry=3))
+    g.add(Rect(35, y_base + 67, 180, 18, fillColor=COLOR_BG_SHADED, strokeColor=COLOR_HAIRLINE, strokeWidth=0.5))
+    g.add(String(42, y_base + 73, "BASELINE SLEEP (8 HOURS)", fontName="Helvetica-Bold", fontSize=7.0, fillColor=COLOR_BLACK))
+
+    # 100% Bar
+    g.add(Rect(50, y_base + 15, 45, 48, fillColor=COLOR_CHARCOAL, strokeColor=COLOR_BLACK, strokeWidth=1.0))
+    g.add(String(58, y_base + 35, "100%", fontName="Helvetica-Bold", fontSize=10.0, fillColor=COLOR_WHITE))
+    g.add(String(105, y_base + 45, "Optimal NK Lytic Activity", fontName="Helvetica-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+    g.add(String(105, y_base + 34, "• Continuous tumor surveillance", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(105, y_base + 24, "• Rapid virus particle lysis", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(105, y_base + 14, "• Low systemic inflammation", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+
+    # Right Container: Restricted Sleep (4 Hours Single Night)
+    g.add(Rect(240, y_base, 205, 85, fillColor=COLOR_BG_BOX, strokeColor=COLOR_BLACK, strokeWidth=1.0, rx=3, ry=3))
+    g.add(Rect(240, y_base + 67, 205, 18, fillColor=COLOR_BG_SHADED, strokeColor=COLOR_HAIRLINE, strokeWidth=0.5))
+    g.add(String(247, y_base + 73, "PARTIAL SLEEP RESTRICTION (4 HOURS)", fontName="Helvetica-Bold", fontSize=7.0, fillColor=COLOR_BLACK))
+
+    # 30% Bar (70% Deficit)
+    g.add(Rect(255, y_base + 15, 45, 15, fillColor=COLOR_BG_SHADED, strokeColor=COLOR_BLACK, strokeWidth=1.0))
+    g.add(String(265, y_base + 19, "30%", fontName="Helvetica-Bold", fontSize=8.0, fillColor=COLOR_BLACK))
+
+    # Deficit Marker
+    g.add(Rect(255, y_base + 30, 45, 33, fillColor=COLOR_WHITE, strokeColor=COLOR_HAIRLINE, strokeWidth=0.5))
+    g.add(String(258, y_base + 44, "-70% LOSS", fontName="Courier-Bold", fontSize=7.0, fillColor=COLOR_CHARCOAL))
+
+    # Clinical Consequences
+    g.add(String(310, y_base + 50, "IMMUNE DEFENSE COLLAPSE:", fontName="Helvetica-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+    g.add(String(310, y_base + 38, "• 70% drop in NK cytotoxicity", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(310, y_base + 27, "• WHO classifies shift-work as carcinogen", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(310, y_base + 16, "• 711 genes disrupted (PNAS 110:E1132)", fontName="Helvetica", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+
+    _draw_arrow(g, 220, y_base + 40, 235, y_base + 40, color=COLOR_BLACK, stroke_width=1.0, head_len=5, head_width=3)
+    g.add(String(20, 12, "ONCOLOGICAL INVARIANT: Natural killer cells act as biological 007 agents. Single-night sleep loss disables surveillance.", fontName="Helvetica-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+    return d
+
+
+# ---------------------------------------------------------------------------
+# 14. Core Body Thermoregulation & Circadian Sleep Gate Diagram
+# ---------------------------------------------------------------------------
+def create_thermal_circadian_diagram() -> Drawing:
+    """Renders the Core Body Thermoregulation & Circadian Sleep Gate Diagram."""
+    height = 155.0
+    d, g = _make_canvas_frame(
+        height,
+        "Figure 5.1: Core Body Thermoregulation & Melatonin Circadian Gate",
+        "Suprachiasmatic Nucleus Signaling & Distal Vasodilation",
+    )
+
+    y_base = 32.0
+
+    # Axes
+    g.add(Line(35, y_base, 450, y_base, strokeColor=COLOR_BLACK, strokeWidth=1.0))
+    g.add(Line(35, y_base, 35, y_base + 95, strokeColor=COLOR_BLACK, strokeWidth=1.0))
+    g.add(String(40, y_base - 10, "12:00 PM (Noon)", fontName="Courier", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(145, y_base - 10, "6:00 PM (Peak Temp)", fontName="Courier", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+    g.add(String(270, y_base - 10, "11:00 PM (Sleep Onset)", fontName="Courier-Bold", fontSize=6.0, fillColor=COLOR_BLACK))
+    g.add(String(390, y_base - 10, "4:00 AM (Thermal Min)", fontName="Courier", fontSize=6.0, fillColor=COLOR_CHARCOAL))
+
+    # Core Temperature Curve
+    temp_pts = [
+        (35, y_base + 65), (145, y_base + 85), (220, y_base + 70),
+        (270, y_base + 40), (340, y_base + 20), (390, y_base + 12), (450, y_base + 35)
+    ]
+    for idx in range(len(temp_pts) - 1):
+        g.add(Line(temp_pts[idx][0], temp_pts[idx][1], temp_pts[idx+1][0], temp_pts[idx+1][1], strokeColor=COLOR_BLACK, strokeWidth=1.5))
+    g.add(String(90, y_base + 90, "Core Body Temperature (Drops 2-3°F / 1°C for sleep)", fontName="Helvetica-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+
+    # Melatonin Secretion Surge Curve
+    mel_pts = [
+        (35, y_base + 8), (145, y_base + 12), (220, y_base + 30),
+        (270, y_base + 70), (340, y_base + 85), (390, y_base + 75), (450, y_base + 20)
+    ]
+    for idx in range(len(mel_pts) - 1):
+        g.add(Line(mel_pts[idx][0], mel_pts[idx][1], mel_pts[idx+1][0], mel_pts[idx+1][1], strokeColor=COLOR_MUTED, strokeWidth=1.2))
+    g.add(String(275, y_base + 60, "Melatonin Surge (Pineal Gland)", fontName="Helvetica-Oblique", fontSize=6.5, fillColor=COLOR_MUTED))
+
+    # Shaded Sleep Window Container
+    g.add(Rect(270, y_base, 180, 95, fillColor=COLOR_BG_SHADED, strokeColor=COLOR_HAIRLINE, strokeWidth=0.5))
+    g.add(String(275, y_base + 82, "CIRCADIAN SLEEP WINDOW", fontName="Courier-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+    g.add(String(275, y_base + 30, "• Ambient Room Temp: ~65°F (18.3°C)", fontName="Helvetica", fontSize=5.5, fillColor=COLOR_CHARCOAL))
+    g.add(String(275, y_base + 20, "• Distal vasodilation radiates heat from hands/feet", fontName="Helvetica", fontSize=5.5, fillColor=COLOR_CHARCOAL))
+    g.add(String(275, y_base + 10, "• Warm bath paradoxical cooling effect", fontName="Helvetica", fontSize=5.5, fillColor=COLOR_CHARCOAL))
+
+    g.add(String(20, 10, "ACTIONABLE INVARIANT: Sleeping in a room warmer than 70°F (21°C) prevents core body cooling, fracturing NREM SWS.", fontName="Helvetica-Bold", fontSize=6.5, fillColor=COLOR_BLACK))
+    return d
+
+
+# ---------------------------------------------------------------------------
 # Registry Map
 # ---------------------------------------------------------------------------
 DIAGRAM_REGISTRY = {
@@ -793,6 +1039,11 @@ DIAGRAM_REGISTRY = {
     "reset_matrix": create_reset_matrix_diagram,
     "index_binary": create_index_binary_diagram,
     "merge_conflict": create_merge_conflict_diagram,
+    "sleep_architecture": create_sleep_architecture_diagram,
+    "memory_transfer": create_memory_transfer_diagram,
+    "adenosine_caffeine": create_adenosine_caffeine_diagram,
+    "immune_killer_cells": create_immune_killer_cells_diagram,
+    "thermal_circadian": create_thermal_circadian_diagram,
 }
 
 
