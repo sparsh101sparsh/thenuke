@@ -160,7 +160,11 @@ python thenuke_cli.py clean
   - **ABSOLUTE INVARIANT: NEVER invoke or mention Faster-Whisper when subtitles are available.** Whisper is strictly a fallback for videos with zero subtitle tracks. Mentioning Whisper or GPU overhead when captions were already available is a critical failure mode.
 - **Explicit Ingestion Modes:**
   - `Fast Path` (`--subtitles-only`): 2-second subtitle ingestion. Ideal when narrative transcript + native ReportLab vector diagrams are sufficient.
-  - `Full Visual Path` (`--download-video`): Downloads 720p MP4 and extracts scene-change frames via ffmpeg for OCR and visual inclusion.
+  - `Full Visual Path` (`--download-video`): Downloads 720p MP4 and extracts scene-change frames via ffmpeg for direct multimodal vision analysis.
+- **AI Multimodal Visual Self-Analysis Invariant (Zero Programmatic Video OCR):**
+  - **NEVER run programmatic OCR (Apple Vision, Tesseract, etc.) on video frames.** Programmatic OCR on video frames is slow, prone to hanging, and incapable of interpreting architectural diagrams, slides, charts, or visual nuances.
+  - **The AI agent itself conducts visual analysis across all extracted video frames.** The agent inspects frame images directly using multimodal vision capabilities (`view_file`), analyzing slides, architecture diagrams, code listings, and whiteboard drawings natively.
+  - Extracted video frames are cataloged directly into `extracted_images` with zero OCR overhead, ready for agent inspection.
 - **Zero-Pretense / Zero-Fluff Communication Policy:**
   - If a video is long (> 30 minutes, > 500 MB) and video downloading will take time:
     - State the reality to the user immediately in plain language:

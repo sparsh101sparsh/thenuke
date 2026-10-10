@@ -888,19 +888,13 @@ def ingest_youtube_video(
                     duration_seconds=duration,
                     ffmpeg_bin=ffmpeg_bin,
                 )
-                from .file_extract import detect_code_blocks, perform_apple_vision_ocr
-
-                # Sample key frames up to 50 for deep OCR to balance depth and runtime
-                sample_step = max(1, len(frames) // 50)
-                for f_idx in range(0, len(frames), sample_step):
-                    f_path = frames[f_idx]
-                    ocr_txt = perform_apple_vision_ocr(f_path)
-                    c_blocks = detect_code_blocks(ocr_txt) if ocr_txt else []
-                    if ocr_txt or c_blocks:
-                        caption = f"Video frame {f_idx + 1} ({f_path.name})"
-                        extracted_images.append(ExtractedImage(path=str(f_path), caption=caption, ocr_text=ocr_txt))
-                        extracted_code_blocks.extend(c_blocks)
-                logger.info(f"Extracted {len(frames)} frames, {len(extracted_images)} key visual blocks with OCR.")
+                # Invariant: AI Multimodal Visual Self-Analysis (Zero Programmatic Video OCR)
+                # Never run programmatic OCR on video frames. All frames are cataloged directly
+                # so the AI agent inspects them visually via its multimodal vision capabilities.
+                for f_idx, f_path in enumerate(frames):
+                    caption = f"Video frame {f_idx + 1} ({f_path.name})"
+                    extracted_images.append(ExtractedImage(path=str(f_path), caption=caption, ocr_text=""))
+                logger.info(f"Extracted {len(frames)} visual frames cataloged for AI multimodal visual self-analysis (zero OCR).")
             else:
                 logger.warning(f"Video stream download did not produce a valid file for {url}. Visual frames skipped.")
         else:

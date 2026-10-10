@@ -180,10 +180,8 @@ class TestIntegrationYouTubeIngestionWithSpecs:
     @patch("scripts.ingestion.yt_ingest.download_subtitles")
     @patch("scripts.ingestion.yt_ingest.download_youtube_video_720p")
     @patch("scripts.ingestion.yt_ingest.extract_high_density_frames")
-    @patch("scripts.ingestion.file_extract.perform_apple_vision_ocr")
-    def test_ingest_youtube_video_with_frame_extraction(
+    def test_ingest_youtube_video_with_frame_extraction_zero_ocr(
         self,
-        mock_ocr,
         mock_extract_frames,
         mock_dl_720p,
         mock_subs,
@@ -209,7 +207,6 @@ class TestIntegrationYouTubeIngestionWithSpecs:
             frame1 = Path(td) / "frame_0001.jpg"
             frame1.touch()
             mock_extract_frames.return_value = [frame1]
-            mock_ocr.return_value = "function connect() {\n  return db;\n}"
 
             source = ingest_youtube_video(
                 "https://www.youtube.com/watch?v=vid789",
@@ -220,9 +217,9 @@ class TestIntegrationYouTubeIngestionWithSpecs:
             assert source.source_type == "youtube"
             assert len(source.extracted_images) >= 1
             assert source.extracted_images[0].path == str(frame1)
-            assert "function connect" in source.extracted_images[0].ocr_text
-            assert len(source.extracted_code_blocks) >= 1
-            assert source.extracted_code_blocks[0].code == "function connect() {\n  return db;\n}"
+            # Invariant: Zero programmatic OCR on video frames; preserved cleanly for AI self-analysis
+            assert source.extracted_images[0].ocr_text == ""
+            assert "Video frame 1" in source.extracted_images[0].caption
 
     @patch("scripts.ingestion.yt_ingest.extract_video_metadata")
     @patch("scripts.ingestion.yt_ingest.download_subtitles")

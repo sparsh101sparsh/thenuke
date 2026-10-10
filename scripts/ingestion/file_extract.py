@@ -391,13 +391,20 @@ def extract_media(
     output_dir: Path,
     ffmpeg_bin: str = "ffmpeg",
     whisper_bin: str = "whisper-cli",
+    extract_frames: bool = False,
 ) -> IngestionSource:
-    """Extract audio transcript from local video or audio files using ffmpeg and whisper-cli."""
+    """Extract audio transcript and optional visual frames from local video/audio files.
+    
+    Invariant: AI Multimodal Visual Self-Analysis (Zero Programmatic Video OCR).
+    When extract_frames=True for videos, scene frames are extracted and cataloged directly
+    for AI multimodal vision inspection with zero OCR.
+    """
     media_name = media_path.stem
     work_dir = output_dir / "media_transcripts"
     work_dir.mkdir(parents=True, exist_ok=True)
     wav_path = work_dir / f"{media_name}_16k.wav"
     out_prefix = str(work_dir / f"{media_name}_whisper")
+    extracted_images: List[ExtractedImage] = []
 
     # 1. Try extracting embedded subtitle stream first if video
     sub_srt_path = work_dir / f"{media_name}_subs.srt"
@@ -442,6 +449,30 @@ def extract_media(
     if not transcript:
         transcript = f"[Audio/Video transcription completed: {media_name}]"
 
+    # 3. Extract visual frames if requested for local video
+    if extract_frames and media_path.suffix.lower() in [".mp4", ".mkv", ".webm", ".mov", ".avi", ".flv", ".wmv"]:
+        frames_dir = work_dir / "frames"
+        frames_dir.mkdir(parents=True, exist_ok=True)
+        out_pattern = str(frames_dir / "frame_%04d.jpg")
+        frame_cmd = [
+            ffmpeg_bin,
+            "-y",
+            "-i", str(media_path),
+            "-vf", "fps=0.5",
+            "-q:v", "2",
+            out_pattern,
+        ]
+        f_code, _, _ = run_cmd(frame_cmd, timeout=120)
+        if f_code == 0:
+            frame_files = sorted(list(frames_dir.glob("frame_*.jpg")))
+            for idx, f_path in enumerate(frame_files):
+                extracted_images.append(ExtractedImage(
+                    path=str(f_path),
+                    caption=f"Local video frame {idx + 1} ({f_path.name})",
+                    ocr_text="",
+                ))
+            logger.info(f"Extracted {len(extracted_images)} frames from {media_path.name} for AI multimodal visual self-analysis (zero OCR).")
+
     chapters = [
         Chapter(
             chapter_index=1,
@@ -461,6 +492,7 @@ def extract_media(
             "file_size_bytes": media_path.stat().st_size if media_path.exists() else 0,
         },
         chapters=chapters,
+        extracted_images=extracted_images,
         extracted_code_blocks=detect_code_blocks(transcript),
     )
     return source
