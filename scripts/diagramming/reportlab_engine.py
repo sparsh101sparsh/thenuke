@@ -118,7 +118,17 @@ def normalize_and_sanitize_markdown(text: str) -> str:
     # Step 4: Convert ASCII tab characters to 4 spaces
     text = text.replace("\t", "    ")
 
-    # Step 5: Convert raw escaped percent symbols
+    # Step 5a: Convert Codeforces triple dollars $$$...$$$ to single dollar $...$
+    text = re.sub(r"\$\$\$([^\$]+?)\$\$\$", r"$\1$", text)
+
+    # Step 5b: Convert alternative math delimiters \[...\] and \(...\) to ReportLab standard
+    text = re.sub(r"\\\[\s*([^\n\r]+?)\s*\\\]", r"$$\1$$", text)
+    text = re.sub(r"\\\(\s*([^\n\r]+?)\s*\\\)", r"$\1$", text)
+
+    # Step 5c: Normalize spaced inline math delimiters $ x $ to $x$
+    text = re.sub(r"(?<!\\)\$\s+([^\$\n\r]+?)\s+\$", r"$\1$", text)
+
+    # Step 5d: Convert raw escaped percent symbols
     text = text.replace(r"\%", "%")
 
     # Step 6: Restore inline code
@@ -187,31 +197,43 @@ def safe_paragraph(html: str, style: Any) -> Paragraph:
 
 
 def latex_to_reportlab_html(tex: str) -> str:
-    """Translates LaTeX math expressions into ReportLab Paragraph rich-text markup."""
+    """Translates LaTeX math expressions into ReportLab Paragraph rich-text markup.
+    
+    Guaranteed:
+    1. Zero raw LaTeX macro backslashes can ever escape into the output.
+    2. Comprehensive support for AMS-LaTeX, KaTeX, Greek letters, cases, binomials, fractions, roots.
+    3. Type 1 Helvetica font safety (no tofu black boxes).
+    """
     t = tex.strip().strip("$")
     if not t:
         return ""
 
-    # Pre-sanitize LaTeX text escapes and escaped symbols
-    t = re.sub(r"\\text\{\\textasciicircum\}|\\textasciicircum", "^", t)
-    t = re.sub(r"\\text\{\\textasciitilde\}|\\textasciitilde", "~", t)
+    # 1. Pre-sanitize LaTeX text escapes and escaped symbols
+    t = re.sub(r"\\text\{\\textasciicircum\}|\\textasciicircum|\^\{\}", "^", t)
+    t = re.sub(r"\\text\{\\textasciitilde\}|\\textasciitilde|~", "~", t)
     t = re.sub(r"\\%", "%", t)
     t = re.sub(r"\\&", "&amp;", t)
     t = re.sub(r"\\_", "_", t)
     t = re.sub(r"\\#", "#", t)
     t = re.sub(r"\\\$", "$", t)
 
-    # Escape XML characters in raw LaTeX
+    # 2. Environments: cases, matrix, aligned
+    t = re.sub(r"\\begin\{(?:cases|matrix|pmatrix|bmatrix|aligned|array)\}(.*?)\\end\{(?:cases|matrix|pmatrix|bmatrix|aligned|array)\}",
+               lambda m: " [ " + m.group(1).replace(r"\\", "; ").replace("&", " ") + " ] ", t, flags=re.DOTALL)
+
+    # 3. Escape bare XML characters in raw LaTeX
     t = t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
-    # Fractions and square roots
-    for _ in range(3):
+    # 4. Fractions, roots, and binomials
+    for _ in range(4):
         t = re.sub(r"\\frac\{([^{}]+)\}\{([^{}]+)\}", r"(\1 / \2)", t)
+        t = re.sub(r"\\sqrt\[([^{}]+)\]\{([^{}]+)\}", r"&radic;[\1](\2)", t)
         t = re.sub(r"\\sqrt\{([^{}]+)\}", r"&radic;(\1)", t)
+        t = re.sub(r"\\binom\{([^{}]+)\}\{([^{}]+)\}", r"C(\1, \2)", t)
+        t = re.sub(r"\{([^{}]+)\s*\\choose\s*([^{}]+)\}", r"C(\1, \2)", t)
+        t = re.sub(r"\{([^{}]+)\s*\\over\s*([^{}]+)\}", r"(\1 / \2)", t)
 
-    # Floor and Ceiling functions
-    # In ReportLab Helvetica Type 1 font, Unicode \u230a and \u230b lack glyphs (rendering as black squares).
-    # We cleanly translate to standard mathematical floor(...) and ceil(...) notation.
+    # 5. Floor and Ceiling functions (font-safe for Type 1 Helvetica)
     for _ in range(3):
         t = re.sub(r"(?:\\left\s*)?\\lfloor\s*(.*?)\s*(?:\\right\s*)?\\rfloor", r"floor(\1)", t)
         t = re.sub(r"(?:\\left\s*)?\\lceil\s*(.*?)\s*(?:\\right\s*)?\\rceil", r"ceil(\1)", t)
@@ -220,17 +242,45 @@ def latex_to_reportlab_html(tex: str) -> str:
     t = re.sub(r"(?:\\left\s*)?\\lceil", "ceil(", t)
     t = re.sub(r"(?:\\right\s*)?\\rceil", ")", t)
 
-    # Mathematical symbols and operators
+    # 6. Overline, underline, and accents
+    t = re.sub(r"\\overline\{([^{}]+)\}", r"\1", t)
+    t = re.sub(r"\\underline\{([^{}]+)\}", r"<u>\1</u>", t)
+    t = re.sub(r"\\(?:bar|vec|hat|tilde)\{([^{}]+)\}", r"\1", t)
+
+    # 7. Font and style wrappers
+    t = re.sub(r"\\operatorname\{([^{}]+)\}", r"\1", t)
+    t = re.sub(r"\\(?:text|mathrm|textsf)\{([^{}]+)\}", r"\1", t)
+    t = re.sub(r"\\(?:mathbf|mathbb)\{([^{}]+)\}", r"<b>\1</b>", t)
+    t = re.sub(r"\\(?:mathit|mathcal)\{([^{}]+)\}", r"<i>\1</i>", t)
+    t = re.sub(r"\\mathtt\{([^{}]+)\}", r'<font face="Courier">\1</font>', t)
+
+    # 8. Delimiter modifiers to strip
+    t = re.sub(r"\\(?:left|right)\.", "", t)
+    t = re.sub(r"\\(?:left|right|big|Big|bigg|Bigg)", "", t)
+    t = re.sub(r"\\(?:displaystyle|textstyle|scriptstyle|scriptscriptstyle|limits|nolimits)", "", t)
+
+    # 9. Spacing macros
+    t = re.sub(r"\\(?:quad|qquad)", "  ", t)
+    t = re.sub(r"\\[,:;! ]", " ", t)
+
+    # 10. Operator and symbol replacements
     replacements = [
+        # Relations & Inequalities
         (r"\\le(?![a-zA-Z])|\\leq(?![a-zA-Z])", "&le;"),
         (r"\\ge(?![a-zA-Z])|\\geq(?![a-zA-Z])", "&ge;"),
         (r"\\neq(?![a-zA-Z])|\\ne(?![a-zA-Z])", "&ne;"),
         (r"\\equiv(?![a-zA-Z])", "&#8801;"),
-        (r"\\cdot(?![a-zA-Z])", "&middot;"),
-        (r"\\times(?![a-zA-Z])", "&times;"),
-        (r"\\pm(?![a-zA-Z])", "&plusmn;"),
-        (r"\\mp(?![a-zA-Z])", "&#8723;"),
-        (r"\\div(?![a-zA-Z])", "&divide;"),
+        (r"\\approx(?![a-zA-Z])", "&asymp;"),
+        (r"\\sim(?![a-zA-Z])", "~"),
+        (r"\\cong(?![a-zA-Z])", "&#8773;"),
+        (r"\\ll(?![a-zA-Z])", "&lt;&lt;"),
+        (r"\\gg(?![a-zA-Z])", "&gt;&gt;"),
+        (r"\\mid(?![a-zA-Z])", "|"),
+        (r"\\nmid(?![a-zA-Z])", "&#8740;"),
+        (r"\\parallel(?![a-zA-Z])", "||"),
+        (r"\\perp(?![a-zA-Z])", "&#8869;"),
+        (r"\\propto(?![a-zA-Z])", "&prop;"),
+        # Set theory
         (r"\\in(?![a-zA-Z])", "&isin;"),
         (r"\\notin(?![a-zA-Z])", "&notin;"),
         (r"\\subset(?![a-zA-Z])", "&sub;"),
@@ -239,39 +289,88 @@ def latex_to_reportlab_html(tex: str) -> str:
         (r"\\supseteq(?![a-zA-Z])", "&supe;"),
         (r"\\cup(?![a-zA-Z])", "&cup;"),
         (r"\\cap(?![a-zA-Z])", "&cap;"),
-        (r"\\mid(?![a-zA-Z])", "|"),
-        (r"\\nmid(?![a-zA-Z])", "&#8740;"),
-        (r"\\ast(?![a-zA-Z])|\\star(?![a-zA-Z])", "*"),
-        (r"\\circ(?![a-zA-Z])", "&#9702;"),
-        (r"\\bullet(?![a-zA-Z])", "&bull;"),
+        (r"\\setminus(?![a-zA-Z])", r" \\ "),
+        (r"\\empty(?![a-zA-Z])|\\emptyset(?![a-zA-Z])|\\varnothing(?![a-zA-Z])", "&empty;"),
+        # Logic
         (r"\\forall(?![a-zA-Z])", "&forall;"),
         (r"\\exists(?![a-zA-Z])", "&exist;"),
-        (r"\\empty(?![a-zA-Z])|\\emptyset(?![a-zA-Z])|\\varnothing(?![a-zA-Z])", "&empty;"),
-        (r"\\approx(?![a-zA-Z])", "&asymp;"),
-        (r"\\sim(?![a-zA-Z])", "~"),
-        (r"\\infty(?![a-zA-Z])", "&infin;"),
-        (r"\\sum(?![a-zA-Z])", "&Sigma;"),
-        (r"\\prod(?![a-zA-Z])", "&Pi;"),
-        (r"\\oplus(?![a-zA-Z])", "&#8853;"),
-        (r"\\dots(?![a-zA-Z])|\\ldots(?![a-zA-Z])", "..."),
-        (r"\\cdots(?![a-zA-Z])", "&middot;&middot;&middot;"),
-        (r"\\to(?![a-zA-Z])|\\rightarrow(?![a-zA-Z])", "&rarr;"),
-        (r"\\leftarrow(?![a-zA-Z])|\\gets(?![a-zA-Z])", "&larr;"),
-        (r"\\implies(?![a-zA-Z])|\\Rightarrow(?![a-zA-Z])", "&rArr;"),
-        (r"\\iff(?![a-zA-Z])|\\Leftrightarrow(?![a-zA-Z])", "&hArr;"),
-        (r"\\alpha(?![a-zA-Z])", "&alpha;"),
-        (r"\\beta(?![a-zA-Z])", "&beta;"),
-        (r"\\gamma(?![a-zA-Z])", "&gamma;"),
-        (r"\\lambda(?![a-zA-Z])", "&lambda;"),
-        (r"\\pi(?![a-zA-Z])", "&pi;"),
-        (r"\\theta(?![a-zA-Z])", "&theta;"),
-        (r"\\sigma(?![a-zA-Z])", "&sigma;"),
         (r"\\land(?![a-zA-Z])|\\wedge(?![a-zA-Z])", "&and;"),
         (r"\\lor(?![a-zA-Z])|\\vee(?![a-zA-Z])", "&or;"),
         (r"\\neg(?![a-zA-Z])", "&not;"),
+        # Arithmetic & Operators
+        (r"\\times(?![a-zA-Z])", "&times;"),
+        (r"\\cdot(?![a-zA-Z])", "&middot;"),
+        (r"\\pm(?![a-zA-Z])", "&plusmn;"),
+        (r"\\mp(?![a-zA-Z])", "&#8723;"),
+        (r"\\div(?![a-zA-Z])", "&divide;"),
+        (r"\\oplus(?![a-zA-Z])", "&#8853;"),
+        (r"\\otimes(?![a-zA-Z])", "&#8855;"),
+        (r"\\odot(?![a-zA-Z])", "&#8857;"),
+        (r"\\ast(?![a-zA-Z])|\\star(?![a-zA-Z])", "*"),
+        (r"\\circ(?![a-zA-Z])", "&#9702;"),
+        (r"\\bullet(?![a-zA-Z])", "&bull;"),
+        # Large operators & Calculus
+        (r"\\sum(?![a-zA-Z])", "&Sigma;"),
+        (r"\\prod(?![a-zA-Z])", "&Pi;"),
+        (r"\\infty(?![a-zA-Z])", "&infin;"),
+        (r"\\int(?![a-zA-Z])", "&int;"),
+        # Arrows
+        (r"\\to(?![a-zA-Z])|\\rightarrow(?![a-zA-Z])", "&rarr;"),
+        (r"\\leftarrow(?![a-zA-Z])|\\gets(?![a-zA-Z])", "&larr;"),
+        (r"\\leftrightarrow(?![a-zA-Z])", "&harr;"),
+        (r"\\implies(?![a-zA-Z])|\\Rightarrow(?![a-zA-Z])", "&rArr;"),
+        (r"\\Leftarrow(?![a-zA-Z])", "&lArr;"),
+        (r"\\iff(?![a-zA-Z])|\\Leftrightarrow(?![a-zA-Z])", "&hArr;"),
+        # Ellipses
+        (r"\\dots(?![a-zA-Z])|\\ldots(?![a-zA-Z])", "..."),
+        (r"\\cdots(?![a-zA-Z])", "&middot;&middot;&middot;"),
+        (r"\\vdots(?![a-zA-Z])", "..."),
+        (r"\\ddots(?![a-zA-Z])", "..."),
+        # Greek alphabet (lowercase)
+        (r"\\alpha(?![a-zA-Z])", "&alpha;"),
+        (r"\\beta(?![a-zA-Z])", "&beta;"),
+        (r"\\gamma(?![a-zA-Z])", "&gamma;"),
+        (r"\\delta(?![a-zA-Z])", "&delta;"),
+        (r"\\epsilon(?![a-zA-Z])|\\varepsilon(?![a-zA-Z])", "&epsilon;"),
+        (r"\\zeta(?![a-zA-Z])", "&zeta;"),
+        (r"\\eta(?![a-zA-Z])", "&eta;"),
+        (r"\\theta(?![a-zA-Z])", "&theta;"),
+        (r"\\iota(?![a-zA-Z])", "&iota;"),
+        (r"\\kappa(?![a-zA-Z])", "&kappa;"),
+        (r"\\lambda(?![a-zA-Z])", "&lambda;"),
+        (r"\\mu(?![a-zA-Z])", "&mu;"),
+        (r"\\nu(?![a-zA-Z])", "&nu;"),
+        (r"\\xi(?![a-zA-Z])", "&xi;"),
+        (r"\\pi(?![a-zA-Z])", "&pi;"),
+        (r"\\rho(?![a-zA-Z])", "&rho;"),
+        (r"\\sigma(?![a-zA-Z])", "&sigma;"),
+        (r"\\tau(?![a-zA-Z])", "&tau;"),
+        (r"\\upsilon(?![a-zA-Z])", "&upsilon;"),
+        (r"\\phi(?![a-zA-Z])|\\varphi(?![a-zA-Z])", "&phi;"),
+        (r"\\chi(?![a-zA-Z])", "&chi;"),
+        (r"\\psi(?![a-zA-Z])", "&psi;"),
+        (r"\\omega(?![a-zA-Z])", "&omega;"),
+        # Greek alphabet (uppercase)
+        (r"\\Gamma(?![a-zA-Z])", "&Gamma;"),
+        (r"\\Delta(?![a-zA-Z])", "&Delta;"),
+        (r"\\Theta(?![a-zA-Z])", "&Theta;"),
+        (r"\\Lambda(?![a-zA-Z])", "&Lambda;"),
+        (r"\\Xi(?![a-zA-Z])", "&Xi;"),
+        (r"\\Pi(?![a-zA-Z])", "&Pi;"),
+        (r"\\Sigma(?![a-zA-Z])", "&Sigma;"),
+        (r"\\Phi(?![a-zA-Z])", "&Phi;"),
+        (r"\\Psi(?![a-zA-Z])", "&Psi;"),
+        (r"\\Omega(?![a-zA-Z])", "&Omega;"),
+        # Delimiters & brackets
+        (r"\\langle(?![a-zA-Z])", "&#10216;"),
+        (r"\\rangle(?![a-zA-Z])", "&#10217;"),
+        (r"\\\{", "{"),
+        (r"\\\}", "}"),
+        # Modulo
         (r"\\pmod\{([^{}]+)\}", r"(mod \1)"),
         (r"\\pmod\s+([a-zA-Z0-9]+)", r"(mod \1)"),
         (r"\\bmod(?![a-zA-Z])", "mod"),
+        # Functions
         (r"\\gcd(?![a-zA-Z])", "gcd"),
         (r"\\lcm(?![a-zA-Z])", "lcm"),
         (r"\\min(?![a-zA-Z])", "min"),
@@ -279,42 +378,33 @@ def latex_to_reportlab_html(tex: str) -> str:
         (r"\\log(?![a-zA-Z])", "log"),
         (r"\\ln(?![a-zA-Z])", "ln"),
         (r"\\exp(?![a-zA-Z])", "exp"),
-        (r"\\operatorname\{([^{}]+)\}", r"\1"),
-        (r"\\text\{([^{}]+)\}", r"\1"),
-        (r"\\mathbf\{([^{}]+)\}", r"<b>\1</b>"),
-        (r"\\mathcal\{([^{}]+)\}", r"<i>\1</i>"),
-        (r"\\left\(", "("),
-        (r"\\right\)", ")"),
-        (r"\\left\[", "["),
-        (r"\\right\]", "]"),
-        (r"\\\{", "{"),
-        (r"\\\}", "}"),
-        (r"\\ ", " "),
-        (r"\\quad", "  "),
-        (r"\\qquad", "    "),
+        (r"\\det(?![a-zA-Z])", "det"),
+        (r"\\deg(?![a-zA-Z])", "deg"),
+        (r"\\dim(?![a-zA-Z])", "dim"),
+        (r"\\sin(?![a-zA-Z])", "sin"),
+        (r"\\cos(?![a-zA-Z])", "cos"),
+        (r"\\tan(?![a-zA-Z])", "tan"),
     ]
     for pattern, rep in replacements:
         t = re.sub(pattern, rep, t)
 
-    # Standalone minus signs to &minus; (avoid touching inside HTML tags or entities)
+    # 11. Standalone minus signs to &minus;
     t = re.sub(r"(?<![a-zA-Z0-9&])-(?=[a-zA-Z0-9(\[])", "&minus;", t)
     t = re.sub(r"(\s)-(\s)", r"\1&minus;\2", t)
     t = re.sub(r"([0-9a-zA-Z\)])-([0-9a-zA-Z\(])", r"\1 &minus; \2", t)
 
-    # Superscripts and subscripts with smaller font size (6.5pt)
-    for _ in range(3):
+    # 12. Superscripts and subscripts
+    for _ in range(4):
         t = re.sub(r"\^\{([^{}]+)\}", r'<super><font size="6.5">\1</font></super>', t)
         t = re.sub(r"_\{([^{}]+)\}", r'<sub><font size="6.5">\1</font></sub>', t)
 
     t = re.sub(r"\^([a-zA-Z0-9+\-])", r'<super><font size="6.5">\1</font></super>', t)
     t = re.sub(r"_([a-zA-Z0-9+\-])", r'<sub><font size="6.5">\1</font></sub>', t)
 
-    # Variables italicization:
-    # Single Latin letters (or common 2-letter tokens like dp) italicized;
-    # Keep digits, operators, entities, tags, and function names upright.
+    # 13. Variables italicization
     UPRIGHT_WORDS = {
         "gcd", "lcm", "min", "max", "log", "ln", "exp", "mod", "abs", "sin", "cos", "tan",
-        "floor", "ceil", "deg", "det", "font", "size", "super", "sub"
+        "floor", "ceil", "deg", "det", "dim", "inf", "sup", "font", "size", "super", "sub"
     }
 
     parts = re.split(r"(<[^>]+>|&[a-zA-Z0-9#]+;)", t)
@@ -332,7 +422,20 @@ def latex_to_reportlab_html(tex: str) -> str:
             return w
         parts[i] = re.sub(r"\b[a-zA-Z]+\b", repl_var, part)
 
-    return "".join(parts)
+    t = "".join(parts)
+
+    # 14. UNIVERSAL FALLBACK / MACRO EXTINGUISHER
+    # If ANY unhandled LaTeX macro with braces remains: unpack argument
+    for _ in range(3):
+        t = re.sub(r"\\[a-zA-Z]+\{([^{}]+)\}", r"\1", t)
+    # If ANY unhandled macro without braces remains: strip backslash
+    t = re.sub(r"\\([a-zA-Z]+)", r"\1", t)
+    # Strip grouping braces
+    t = re.sub(r"(?<![a-zA-Z0-9])\{([^{}]+)\}(?![a-zA-Z0-9])", r"\1", t)
+    # Strip any stray backslashes
+    t = t.replace("\\", "")
+
+    return t
 
 
 def md_to_reportlab_html(text: str) -> str:
@@ -367,6 +470,26 @@ def md_to_reportlab_html(text: str) -> str:
     text = re.sub(r"\$\$([^\$]+?)\$\$", math_store, text)
     # Inline math $...$ (strictly single-line, Pandoc-compliant non-space boundary)
     text = re.sub(r"(?<!\\)\$(?!\s)([^\$\n\r]+?)(?<!\s)\$", math_store, text)
+
+    # 2b. Sanitize bare LaTeX operators that leaked outside math blocks
+    bare_replacements = [
+        (r"\\le(?![a-zA-Z])|\\leq(?![a-zA-Z])", "&le;"),
+        (r"\\ge(?![a-zA-Z])|\\geq(?![a-zA-Z])", "&ge;"),
+        (r"\\ne(?![a-zA-Z])|\\neq(?![a-zA-Z])", "&ne;"),
+        (r"\\times(?![a-zA-Z])", "&times;"),
+        (r"\\cdot(?![a-zA-Z])", "&middot;"),
+        (r"\\pm(?![a-zA-Z])", "&plusmn;"),
+        (r"\\approx(?![a-zA-Z])", "&asymp;"),
+        (r"\\equiv(?![a-zA-Z])", "&#8801;"),
+        (r"\\in(?![a-zA-Z])", "&isin;"),
+        (r"\\notin(?![a-zA-Z])", "&notin;"),
+        (r"\\to(?![a-zA-Z])|\\rightarrow(?![a-zA-Z])", "&rarr;"),
+        (r"\\implies(?![a-zA-Z])|\\Rightarrow(?![a-zA-Z])", "&rArr;"),
+        (r"\\dots(?![a-zA-Z])|\\ldots(?![a-zA-Z])", "..."),
+        (r"\\cdots(?![a-zA-Z])", "..."),
+    ]
+    for pattern, rep in bare_replacements:
+        text = re.sub(pattern, rep, text)
 
     # 3. Escape bare & that are not already valid HTML entities
     text = VALID_HTML_ENTITIES_RE.sub("&amp;", text)

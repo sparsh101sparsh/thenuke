@@ -167,6 +167,62 @@ class TestMathTypographyFidelity:
         assert "lcm(" in html
         assert "&le;" in html
 
+    def test_universal_macro_extinguisher(self):
+        """Ensures NO backslash can ever leave latex_to_reportlab_html, even with unsupported/custom macros."""
+        tex = r"\operatorname{mex}(S) + \cancel{x} + \mathcal{O}(N) + \unknownmacro{foo} + \isolatedcommand"
+        html = latex_to_reportlab_html(tex)
+        assert "\\" not in html
+        assert "mex(" in html
+        assert "foo" in html
+        assert "isolatedcommand" in html
+
+    def test_cases_and_matrix_environments(self):
+        """Ensures piecewise cases and matrix environments are rendered cleanly without backslashes."""
+        tex = r"\begin{cases} x & \text{if } x > 0 \\ -x & \text{otherwise} \end{cases}"
+        html = latex_to_reportlab_html(tex)
+        assert "\\" not in html
+        assert "otherwise" in html
+        assert "&gt;" in html
+
+    def test_binomials_and_fractions(self):
+        """Tests standard binomials and TeX primitive fractions."""
+        tex = r"\binom{n}{k} + {n \choose 2} + {a \over b}"
+        html = latex_to_reportlab_html(tex)
+        assert "\\" not in html
+        assert "<i>C</i>(" in html
+
+    def test_greek_alphabet_coverage(self):
+        """Verifies full Greek alphabet lowercase and uppercase support."""
+        tex = r"\alpha + \beta + \Delta + \Sigma + \Omega + \pi"
+        html = latex_to_reportlab_html(tex)
+        assert "\\" not in html
+        assert "&alpha;" in html
+        assert "&Delta;" in html
+        assert "&Omega;" in html
+        assert "&pi;" in html
+
+    def test_delimiter_normalizations(self):
+        """Verifies triple dollars, \(...\), \[...\], and spaced dollars in markdown."""
+        md = r"Bounds: $$$10^5$$$ and \( y \ge 0 \) and $ 1 \le x \le n $ with \[ \sum i \]."
+        html = md_to_reportlab_html(md)
+        assert "$$$" not in html
+        assert r"\(" not in html
+        assert r"\[" not in html
+        assert "&ge;" in html
+        assert "&le;" in html
+        assert "&Sigma;" in html
+
+    def test_bare_operators_outside_math(self):
+        """Ensures bare LaTeX operators outside dollar signs are rendered as HTML entities."""
+        md = r"Constraints: 1 \le n \le 10^5 and a \ne 0 and x \to y."
+        html = md_to_reportlab_html(md)
+        assert r"\le" not in html
+        assert r"\ne" not in html
+        assert r"\to" not in html
+        assert "&le;" in html
+        assert "&ne;" in html
+        assert "&rarr;" in html
+
 
 # ===========================================================================
 # 4. XML Parsing Resilience & Emergency Repair Tests

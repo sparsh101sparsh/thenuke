@@ -328,11 +328,19 @@ def run_pass2_textual(pdf_path: Path) -> Pass2TextualResult:
     latex_macro_hits = [
         f"Unrendered LaTeX macro '{m.group()}' at pos {m.start()}"
         for m in re.finditer(
-            r"\\(?:le|leq|ge|geq|ne|neq|notin|frac|sqrt|sum|prod|oplus|cdots|ldots|implies|iff|pmod|bmod|gcd|lfloor|rfloor|lceil|rceil|textasciicircum|mathbf|mathcal|qquad)\b",
+            r"\\(?:le|leq|ge|geq|ne|neq|notin|frac|sqrt|sum|prod|oplus|otimes|odot|cdots|ldots|vdots|ddots|implies|iff|to|gets|pmod|bmod|gcd|lcm|lfloor|rfloor|lceil|rceil|text|textasciicircum|textasciitilde|mathbf|mathbb|mathcal|mathit|mathrm|mathtt|qquad|quad|alpha|beta|gamma|delta|lambda|pi|sigma|omega|theta|binom|choose|overline|underline|begin|end)\b",
             full_text,
         )
     ]
-    rendering_hits = escape_hits + placeholder_hits + delimiter_hits + latex_macro_hits
+    symbol_leak_hits = [
+        f"Unrendered escaped symbol '{m.group()}' at pos {m.start()}"
+        for m in re.finditer(r"\\[%_&#]", full_text)
+    ]
+    tofu_hits = [
+        f"Broken/Tofu character '{m.group()}' (U+{ord(m.group()):04X}) at pos {m.start()}"
+        for m in re.finditer(r"[\ufffd\u25a0\u25aa\u25ab]", full_text)
+    ]
+    rendering_hits = escape_hits + placeholder_hits + delimiter_hits + latex_macro_hits + symbol_leak_hits + tofu_hits
 
     errors = 0
     warnings = 0
