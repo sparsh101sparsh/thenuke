@@ -8,7 +8,7 @@ description: >
   and synthesizes high-density engineering reference manuals in 100% Roman-alphabet Hinglish
   (zero Devanagari characters) with PyMuPDF vector diagrams, monochrome aesthetic, and
   mandatory author branding (@issparsh @sumitsingh097 with the official X/Twitter glyph).
-version: 2.2.0
+version: 2.3.0
 authors:
   - "@issparsh"
   - "@sumitsingh097"
@@ -311,9 +311,14 @@ To guarantee that broken formatting, raw escapes, unrendered math, or XML parsin
 - **Currency Isolation:** Currency patterns (`$100`, `$50`) with trailing punctuation or whitespace are preserved verbatim as standard text.
 - **Display Math Support:** Block math (`$$...$$`) is parsed independently with multi-line support and converted to ReportLab flowables.
 
-### 3. Mathematical Typography Fidelity
+### 3. Mathematical Typography Fidelity & Universal Macro Extinguisher
+- **Universal Macro Extinguisher:** At the end of math translation, any unrecognized or platform-custom macro taking an argument (`\cmd{arg}`) automatically unpacks its content (`arg`), and any bare macro (`\cmd`) has its backslash stripped. Grouping braces `{}` and stray backslashes are eliminated. **Under zero circumstances can a raw LaTeX command or backslash escape into the document.**
+- **Font-Safe Floor & Ceiling:** Functions `\lfloor ... \rfloor` and `\lceil ... \rceil` translate to `floor(...)` and `ceil(...)`, eliminating ReportLab Type 1 Helvetica encoding failures (which render as black tofu rectangles `■`).
+- **Complete AMS-LaTeX & KaTeX Coverage:** Native translation for piecewise environments (`\begin{cases} ... \end{cases}`), matrices (`\begin{matrix}`), binomial coefficients (`\binom{n}{k}`, `{n \choose k}`, `{a \over b}`), nth roots (`\sqrt[n]{x}`), overlines/underlines, accents, and the entire Greek alphabet (`\alpha` ... `\Omega`).
+- **Bare Operator Protection:** In prose outside math delimiters, bare LaTeX operators (`\le`, `\ge`, `\times`, `\cdot`, `\ne`, `\in`, `\notin`, `\to`, `\implies`) are automatically converted to valid HTML entities (`&le;`, `&ge;`, `&times;`, etc.).
+- **Codeforces & Platform Delimiters:** Codeforces triple-dollars (`$$$...$$$`), alternative delimiters (`\(...\)`, `\[...\]`), and spaced delimiters (`$ x $`) are healed and normalized automatically.
 - **AMS-LaTeX & KaTeX Alignment:** Superscripts and subscripts (`^`, `_`, `^{...}`, `_{...}`) are rendered with proportional downscaling (`<font size="6.5">`) for crisp, readable exponents.
-- **Upright Roman Standards:** Digits, operators (`+`, `-`, `=`, `&minus;`), and mathematical functions (`gcd`, `min`, `max`, `log`, `ln`, `mod`, `sin`, `cos`) are rendered upright; single Latin variables are italicized.
+- **Upright Roman Standards:** Digits, operators (`+`, `-`, `=`, `&minus;`), and mathematical functions (`gcd`, `lcm`, `min`, `max`, `log`, `ln`, `mod`, `sin`, `cos`, `tan`, `det`, `deg`, `dim`) are rendered upright; single Latin variables are italicized.
 - **True Minus Signs:** Standalone negation and subtraction operators are rendered as `&minus;` rather than ambiguous ASCII hyphens.
 
 ### 4. Zero-Crash XML Resilience
@@ -324,12 +329,15 @@ To guarantee that broken formatting, raw escapes, unrendered math, or XML parsin
   4. *Ultimate:* Sanitized basic ASCII plain text.
 - Under zero circumstances can a document compilation fail due to ExpatError, unclosed tags, or malformed user text.
 
-### 5. Automated Textual QA Gate
+### 5. Automated Textual QA Gate & Compilation Barrier
 Pass 2 of `qa_audit_engine.py` inspects the compiled PDF text layer for:
 - Zero Devanagari characters (100% Roman-alphabet Hinglish enforcement).
 - Zero literal escape artifacts (`\n-`, `\n•`, `\n*`).
-- Zero leaked internal placeholders (`___CODE_PH_`, `___MATH_PH_`, `___PRE_CODE_PH_`, etc.).
+- Zero unrendered LaTeX macro commands (`\le`, `\ge`, `\times`, `\sum`, `\frac`, `\lfloor`, `\text`, etc.).
+- Zero unrendered escaped symbols (`\%`, `\_`, `\&`, `\#`).
 - Zero unrendered math delimiters (`$$$`).
+- Zero leaked internal placeholders (`___CODE_PH_`, `___MATH_PH_`, etc.).
+- Zero broken or tofu replacement characters (`\ufffd`, `\u25a0`, `■`).
 
 Any violation halts publication immediately and triggers automatic remediation.
 

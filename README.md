@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 [![Antigravity](https://img.shields.io/badge/Antigravity-Verified%20Skill-8A2BE2.svg?style=for-the-badge)](https://github.com/sparsh101sparsh/skills)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.14-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![Test Suite](https://img.shields.io/badge/Tests-453%20Passed%20(100%25)-00C853?style=for-the-badge)](#-test-architecture--verification)
+[![Test Suite](https://img.shields.io/badge/Tests-539%20Passed%20(100%25)-00C853?style=for-the-badge)](#-test-architecture--verification)
 [![Aesthetic](https://img.shields.io/badge/Aesthetic-Monochrome%20High--Contrast-000000?style=for-the-badge)](#-typographic-hierarchy--monochrome-palette)
 [![Script Invariant](https://img.shields.io/badge/Language-100%25%20Roman%20Hinglish-FF6F00?style=for-the-badge)](#-linguistic-system--strict-roman-hinglish)
 [![Author Attribution](https://img.shields.io/badge/Prepared%20By-%40issparsh%20%26%20%40sumitsingh097-1DA1F2?style=for-the-badge&logo=x&logoColor=white)](https://x.com/issparsh)
@@ -71,6 +71,8 @@ Modern technical documentation generation suffers from a fundamental impedance m
 | **Native Vector Technical Diagrams** | `scripts/diagramming/vector_diagrams.py` | Native ReportLab `Drawing` vector diagrams (Commit DAGs, 3-Trees, LCA merges, Rebase replays, Object pointer graphs) at 0 rasterization loss |
 | **ReportLab Publication Compiler** | `scripts/diagramming/reportlab_engine.py` | Professional ISO A4 layout with running hairline rules, vector 𝕏 branding, and strict page budgeting |
 | **Multi-Source Ingestion** | YouTube (720p), Web Documentation, GitHub, PDFs, PPTX, Local Video/Audio, Screenshots | Single unified corpus (`nuke_ingestion_corpus.json`) regardless of input format |
+| **CP Problem Ingestion** | `scripts/ingestion/cp_problem.py` | Dedicated parsers for Codeforces, LeetCode, AtCoder, CodeChef, and HackerRank via `online-judge-tools` and APIs; math preservation, sample I/O blocks |
+| **Universal LaTeX & Macro Extinguisher** | `scripts/diagramming/reportlab_engine.py` | Font-safe floor/ceil translations, universal LaTeX macro unpacker, full AMS-LaTeX/Greek coverage, zero-crash XML entity resilience |
 | **Strict 720p Video Pipeline** | `yt-dlp -f "bestvideo[height<=720]+bestaudio/best[height<=720]"` | Prevents 4K bandwidth saturation while retaining full text sharpness on 1080p slide recordings |
 | **Adaptive Video Frame Analysis (Dual-Mode)** | Ask User: AI Multimodal Visual Inspection vs. Programmatic OCR Pipeline (`--ocr-frames`) | Eliminates token exhaustion on 10h+ videos via OCR, while enabling high-fidelity visual analysis on short/medium talks |
 | **Dynamic Frame Sampling** | Scene-change detection heuristic based on duration: $R = \max(0.05, \min(0.5, \frac{180}{T}))$ | Captures blackboard writing, code diffs, and slide transitions without duplicate frame bloat |
@@ -185,6 +187,11 @@ The ingestion engine homogenizes heterogeneous data streams into a normalized `U
   - Ingests local `.pdf` documents via PyMuPDF vector extraction.
   - Extracts `.pptx` slides, notes, and shape groupings via `python-pptx`.
   - Ingests local `.mp4`, `.mov`, `.wav`, and `.mp3` media files with automatic transcription.
+- **`cp_problem.py`**:
+  - Dedicated competitive programming ingestion engine supporting Codeforces, LeetCode, AtCoder, CodeChef, and HackerRank.
+  - Integrates with `online-judge-tools` (`oj`, `oj-api`) for automated problem statement extraction and sample test case retrieval.
+  - Preserves mathematical formulas, KaTeX/LaTeX delimiters (`$`, `$$`, `$$$`), piecewise cases, and matrix environments intact.
+  - Formats sample inputs and outputs into dedicated, monospaced code blocks.
 
 ---
 
@@ -287,6 +294,8 @@ Pass 1: Visual & Structural QA (150 DPI Rasterization)
 
 Pass 2: Textual & Linguistic Quality Audit
   • Devanagari Unicode Regex : PASS (0 violations detected)
+  • Unrendered LaTeX Check   : PASS (0 macro escapes, 0 raw backslashes)
+  • Tofu & Replacement Check : PASS (0 black squares, 0 font tofu)
   • Syllabus Index Check     : PASS (PART I to VI verified)
   • Phase Challenges Check   : PASS (27 drills detected across 9 phases)
   • Author Branding Check    : PASS (@issparsh @sumitsingh097 verified)
@@ -510,17 +519,18 @@ python thenuke_cli.py clean --yes
 
 ## 🧪 Test Architecture & Verification
 
-`thenuke` enforces a 4-tier test architecture with **453 automated tests** passing at **100% success rate**:
+`thenuke` enforces a 4-tier test architecture with **539 automated tests** passing at **100% success rate**:
 
 ```bash
 # Execute entire test suite
 pytest tests/ -v
 
 # Target specific milestone suites
-pytest tests/test_ingestion.py tests/test_ingestion_user_specs.py
+pytest tests/test_ingestion.py tests/test_cp_ingestion.py tests/test_ingestion_user_specs.py
 pytest tests/test_grilling.py tests/test_challenger_m2_stress.py
 pytest tests/test_synthesis.py
-pytest tests/test_diagramming_and_qa.py
+pytest tests/test_diagramming_and_qa.py tests/test_rendering_invariants.py
+pytest tests/e2e/
 ```
 
 ### Test Coverage Matrix
@@ -530,14 +540,19 @@ pytest tests/test_diagramming_and_qa.py
 │ Test Module                   │ Count │ Status  │ Scope Verified                               │
 ├───────────────────────────────┼───────┼─────────┼──────────────────────────────────────────────┤
 │ test_ingestion.py             │ 35    │ PASSED  │ YouTube URLs, subtitle deduplication, DOM    │
-│ test_ingestion_user_specs.py  │ 15    │ PASSED  │ 720p format flags, dynamic frame rate, whisper│
-│ test_challenger_m1_*.py       │ 220   │ PASSED  │ Adversarial boundary fuzzing, VTT timing     │
-│ test_grilling.py              │ 31    │ PASSED  │ Scope interviews, relevance heuristics, JSON │
-│ test_challenger_m2_stress.py  │ 40    │ PASSED  │ Word-boundary regex, talking-head rejection  │
-│ test_synthesis.py             │ 40    │ PASSED  │ 0 Devanagari assertion, syllabus, 3 drills   │
-│ test_diagramming_and_qa.py    │ 72    │ PASSED  │ Monochrome palette, Base-14 fonts, Dual QA   │
+│ test_ingestion_user_specs.py  │ 10    │ PASSED  │ 720p format flags, dynamic frame rate, whisper│
+│ test_cp_ingestion.py          │ 42    │ PASSED  │ Codeforces, LeetCode, AtCoder, oj-api, samples│
+│ test_challenger_m1_*.py       │ 53    │ PASSED  │ Adversarial boundary fuzzing, VTT timing     │
+│ test_grilling.py              │ 35    │ PASSED  │ Scope interviews, relevance heuristics, JSON │
+│ test_challenger_m2_stress.py  │ 36    │ PASSED  │ Word-boundary regex, talking-head rejection  │
+│ test_synthesis.py             │ 73    │ PASSED  │ 0 Devanagari assertion, syllabus, 3 drills   │
+│ test_diagramming_and_qa.py    │ 40    │ PASSED  │ Monochrome palette, Base-14 fonts, Dual QA   │
+│ test_rendering_invariants.py  │ 26    │ PASSED  │ LaTeX macro extinguisher, font-safe floor/ceil│
+│ test_universal_curriculum.py  │ 6     │ PASSED  │ Multi-modal curriculum, English specialization│
+│ test_quotes_and_multiagent.py │ 9     │ PASSED  │ Dynamic quotes library, multi-agent pipeline │
+│ e2e/test_tier*.py             │ 174   │ PASSED  │ 4-tier end-to-end integration & fuzz workloads│
 ├───────────────────────────────┼───────┼─────────┼──────────────────────────────────────────────┤
-│ TOTAL VERIFIED SUITE          │ 453   │ 100%    │ 0 Failures • 0 Regressions • Zero Mock Hacks │
+│ TOTAL VERIFIED SUITE          │ 539   │ 100%    │ 0 Failures • 0 Regressions • Zero Mock Hacks │
 └───────────────────────────────┴───────┴─────────┴──────────────────────────────────────────────┘
 ```
 
