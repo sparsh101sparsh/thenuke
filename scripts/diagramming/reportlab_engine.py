@@ -572,9 +572,17 @@ class PublicationCanvas(canvas.Canvas):
         self.setFont("Helvetica", 8)
         self.setFillColor(COLOR_MUTED)
 
-        # 1. Top running header and dividing rule removed per user request
+        # 1. Top running header text (skip on Page 1 even for CP, since Page 1 has main title)
+        if pno > 1:
+            header_text = f"{self.doc_title} — Architecture & Core Internals"
+            self.drawString(54.0, PAGE_HEIGHT - 34.0, header_text)
 
-        # 2. Bottom hairline dividing rule
+            # 2. Top hairline dividing rule
+            self.setStrokeColor(COLOR_HAIRLINE)
+            self.setLineWidth(0.5)
+            self.line(54.0, PAGE_HEIGHT - 42.0, PAGE_WIDTH - 54.0, PAGE_HEIGHT - 42.0)
+
+        # 3. Bottom hairline dividing rule
         self.setStrokeColor(COLOR_HAIRLINE)
         self.setLineWidth(0.5)
         self.line(54.0, 46.0, PAGE_WIDTH - 54.0, 46.0)
@@ -1442,48 +1450,7 @@ class ReferenceManualBuilder:
                 story.append(safe_paragraph(md_to_reportlab_html(line.strip()), self.styles["Body"]))
             i += 1
 
-        # Post-process: Wrap atomic Problem and Solution blocks in KeepTogether
-        # Guarantees that a single problem or solution is NEVER split across multiple pages.
-        grouped_story: List[Any] = []
-        current_block: List[Any] = []
-        in_atomic_block = False
-
-        for f in story:
-            t = getattr(f, "text", "")
-            style_name = getattr(getattr(f, "style", None), "name", "")
-            is_prob_head = (style_name == "SectionHeader" and bool(re.match(r"^Problem\s+\d+\.\d+", t.strip())))
-            is_sol_head = (style_name == "SectionHeader" and bool(re.match(r"^Solution\s+\d+\.\d+", t.strip())))
-            is_other_boundary = (isinstance(f, PageBreak) or
-                                 style_name in ("ChapterHeader", "PhaseHeader") or
-                                 any(t.strip().startswith(x) for x in ["Chapter ", "PHASE ", "APPENDICES"]))
-
-            if is_prob_head or is_sol_head or is_other_boundary:
-                if current_block:
-                    if in_atomic_block:
-                        grouped_story.append(KeepTogether(current_block))
-                    else:
-                        grouped_story.extend(current_block)
-                    current_block = []
-
-                if is_prob_head or is_sol_head:
-                    in_atomic_block = True
-                    current_block.append(f)
-                else:
-                    in_atomic_block = False
-                    grouped_story.append(f)
-            else:
-                if in_atomic_block:
-                    current_block.append(f)
-                else:
-                    grouped_story.append(f)
-
-        if current_block:
-            if in_atomic_block:
-                grouped_story.append(KeepTogether(current_block))
-            else:
-                grouped_story.extend(current_block)
-
-        return grouped_story
+        return story
 
     def compile(self, markdown_text: str) -> Path:
         """Compiles the given Markdown manual into an aligned, publication-grade PDF."""
