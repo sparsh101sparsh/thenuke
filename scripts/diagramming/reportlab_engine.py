@@ -125,10 +125,7 @@ def normalize_and_sanitize_markdown(text: str) -> str:
     # Step 5b: Normalize inline math \(...\) to $...$
     text = re.sub(r"\\\(\s*([^\n\r]+?)\s*\\\)", r"$\1$", text)
 
-    # Step 5c: Normalize spaced inline math delimiters $ x $ to $x$
-    text = re.sub(r"(?<!\\)\$\s+([^\$\n\r]+?)\s+\$", r"$\1$", text)
-
-    # Step 5d: Convert raw escaped percent symbols
+    # Step 5c: Convert raw escaped percent symbols
     text = text.replace(r"\%", "%")
 
     # Step 6: Restore inline code
@@ -212,7 +209,7 @@ def latex_to_reportlab_html(tex: str) -> str:
     t = re.sub(r"\\text\{\\textasciicircum\}|\\textasciicircum|\^\{\}", "^", t)
     t = re.sub(r"\\text\{\\textasciitilde\}|\\textasciitilde|~", "~", t)
     t = re.sub(r"\\%", "%", t)
-    t = re.sub(r"\\&", "&amp;", t)
+    t = re.sub(r"\\&", "&", t)
     t = re.sub(r"\\_", "_", t)
     t = re.sub(r"\\#", "#", t)
     t = re.sub(r"\\\$", "$", t)
