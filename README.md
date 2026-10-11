@@ -35,15 +35,16 @@
   - [4.6 Stage 6: Post-Clearance Automated Data Lifecycle](#46-stage-6-post-clearance-automated-data-lifecycle)
 - [5. Linguistic System & Strict Roman Hinglish](#-linguistic-system--strict-roman-hinglish)
 - [6. Typographic Hierarchy & Monochrome Palette](#-typographic-hierarchy--monochrome-palette)
-- [7. Cross-Platform Installation](#-cross-platform-installation)
-  - [7.1 Automated 1-Line Installation](#71-automated-1-line-installation-macos--linux)
-  - [7.2 Manual Installation (macOS / Linux / Windows WSL)](#72-manual-installation)
-  - [7.3 Antigravity Skill Registration](#73-antigravity-skill-registration)
-- [8. CLI Command Reference](#-cli-command-reference)
-- [9. Test Architecture & Verification](#-test-architecture--verification)
-- [10. Data Structures & File Schemas](#-data-structures--file-schemas)
-- [11. Authors & Attribution](#-authors--attribution)
-- [12. License](#-license)
+- [7. Mathematical Typesetting & Academic Notation Standards](#-mathematical-typesetting--academic-notation-standards-non-negotiable)
+- [8. Cross-Platform Installation](#-cross-platform-installation)
+  - [8.1 Automated 1-Line Installation](#81-automated-1-line-installation-macos--linux)
+  - [8.2 Manual Installation (macOS / Linux / Windows WSL)](#82-manual-installation)
+  - [8.3 Antigravity Skill Registration](#83-antigravity-skill-registration)
+- [9. CLI Command Reference](#-cli-command-reference)
+- [10. Test Architecture & Verification](#-test-architecture--verification)
+- [11. Data Structures & File Schemas](#-data-structures--file-schemas)
+- [12. Authors & Attribution](#-authors--attribution)
+- [13. License](#-license)
 
 ---
 
@@ -383,9 +384,56 @@ Adheres to a minimalist, high-contrast monochrome aesthetic for focused reading:
 
 ---
 
+## 📐 Mathematical Typesetting & Academic Notation Standards (Non-Negotiable)
+
+Whenever `thenuke` produces educational explanations, reference manuals, notes, competitive programming problem breakdowns, or PDF documents containing mathematical formulas, it strictly enforces **university-textbook academic typesetting**.
+
+### 1. LaTeX Source Standard & Ban on Informal Approximations
+All mathematical formulas must use standard LaTeX (`\( ... \)` inline, `\[ ... \]` or `$$ ... $$` display).
+- ❌ **Strictly Banned:** Linear plain-text approximations such as `P(A|B) = P(A B) / P(B)`, `a/b`, `sum(i=1 to n) xi`, `sqrt(a+b)`, `integral f(x) dx`, `lim(x->0) f(x)`.
+- ✅ **Mandatory:** Formally typeset LaTeX with proper operators, vertical fraction bars, explicit conditions, and correct symbols:
+  $$P(A \mid B) = \frac{P(A \cap B)}{P(B)}, \qquad P(B) > 0$$
+
+### 2. The 12 Mathematical Formatting Rules (Rules A through L)
+
+| Rule | Topic | Linear Approximation (BANNED) | Academic Standard (MANDATORY) |
+|---|---|---|---|
+| **A** | **Fractions** | `a/b` | `\[ \frac{a}{b} \]` |
+| **B** | **Conditional Probability** | `P(A/B) = P(AB)/P(B)` | `\[ P(A \mid B) = \frac{P(A \cap B)}{P(B)}, \qquad P(B) > 0 \]` |
+| **C** | **Subscripts** | `x1, x2, aij` | `\(x_1,\quad x_2,\quad a_{ij}\)` |
+| **D** | **Superscripts & Powers** | `x^2, a^n` | `\[ x^2,\qquad a^n \]` |
+| **E** | **Roots & Radicals** | `sqrt(x), sqrt(a+b)` | `\[ \sqrt{x},\qquad \sqrt{a+b} \]` |
+| **F** | **Summations** | `sum(i=1 to n) xi` | `\[ \sum_{i=1}^{n} x_i \]` |
+| **G** | **Integrals** | `integral f(x) dx` | `\[ \int f(x)\,dx \]` |
+| **H** | **Limits** | `lim(x->0) f(x)` | `\[ \lim_{x \to 0} f(x) \]` |
+| **I** | **Matrices** | ASCII tables or linear rows | `\[ A = \begin{bmatrix} a_{11} & a_{12} \\ a_{21} & a_{22} \end{bmatrix} \]` |
+| **J** | **Sets & Logic** | `union, intersect, implies` | `\[ A \cup B,\quad A \cap B,\quad A \subseteq B,\quad A \Rightarrow B \]` |
+| **K** | **Greek Letters** | `alpha, beta, theta` | `\(\alpha,\quad \beta,\quad \theta,\quad \lambda,\quad \mu,\quad \sigma\)` |
+| **L** | **Multi-Step Derivations** | Unaligned multi-line text | `\[ \begin{aligned} x^2 - 5x + 6 &= 0 \\ (x-2)(x-3) &= 0 \\ x &= 2 \quad \text{or} \quad x = 3 \end{aligned} \]` |
+
+### 3. Inline vs Display Math Rules
+- **Inline (`\(...\)`):** Use for short expressions embedded in sentence prose (`The variable \(x\) represents the unknown, with \(x > 0\)`).
+- **Display (`\[...\]`):** Use for core definitions, theorems, vertical fractions, multi-step derivations, and formulas that students must memorize.
+
+### 4. Mathematical Correctness & Invariants
+- **Preserve Conditions:** Never omit conditions such as $P(B) > 0$. Division by zero is undefined.
+- **Distinguish Concepts:** Never conflate $P(A \mid B)$ with the ratio $\frac{P(A)}{P(B)}$.
+- **No Guesswork on Ambiguities:** Flag ambiguous expressions rather than guessing symbols.
+
+### 5. High-Resolution Visual Flowable Rendering Pipeline
+- Math expressions are dynamically rendered at 300 DPI into transparent vector-like flowables using `scripts/diagramming/math_renderer.py` and embedded into ReportLab documents.
+- Pass 2 of `scripts/qa/qa_audit_engine.py` validates that zero raw macro commands or informal approximations slip into the published PDF.
+
+### 6. CLI Command
+```bash
+python thenuke_cli.py explain-math conditional-probability --output output/Conditional_Probability.pdf
+```
+
+---
+
 ## 💻 Cross-Platform Installation
 
-### 7.1 Automated One-Line Install
+### 8.1 Automated One-Line Install
 
 Run this single command to clone the repository, install Python dependencies, and register the skill in your Antigravity environment:
 
@@ -395,7 +443,7 @@ git clone https://github.com/sparsh101sparsh/thenuke.git ~/.gemini/config/skills
 
 ---
 
-### 7.2 Manual Installation
+### 8.2 Manual Installation
 
 #### Step 1: Install System Binaries
 The video ingestion pipeline requires `ffmpeg` and `yt-dlp`.
@@ -447,7 +495,7 @@ pip install -e ".[cp,whisper,dev]"
 
 ---
 
-### 7.3 Antigravity Skill Registration
+### 8.3 Antigravity Skill Registration
 
 To make `thenuke` globally accessible to your Google Antigravity pair-programming agent, copy it to the global configuration directory:
 
@@ -509,6 +557,12 @@ python thenuke_cli.py compile-git --output ~/thenuke_workspace/output/Git_Refere
 Ingests multi-modal resources, maps them into an explicit `CorpusIndexer` (`EvidenceSpan`) layer, and synthesizes publication-grade study notes directly grounded in the source corpus (transcripts, code snippets, key concepts) with zero canned template text.
 ```bash
 python thenuke_cli.py ingest-notes "https://youtu.be/..." --topic "Modern Distributed Systems" --output ~/thenuke_workspace/output/Notes.pdf
+```
+
+#### `explain-math` — Academic Mathematical Typesetting & Manual Compiler
+Generates rigorous academic notes and explanations with 100% LaTeX notation (Rules A through L) and compiles them into a publication-grade PDF with 300 DPI rendered math flowables.
+```bash
+python thenuke_cli.py explain-math conditional-probability --output output/Conditional_Probability.pdf
 ```
 
 #### `fetch-problem` — Competitive Programming Problem Fetcher

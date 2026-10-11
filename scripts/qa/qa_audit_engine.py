@@ -327,11 +327,14 @@ def run_pass2_textual(pdf_path: Path, profile: str = "auto") -> Pass2TextualResu
             prof = "git"
         elif "extractive notes" in full_text.lower() or "source tape" in full_text.lower():
             prof = "notes"
+        elif "probability theory" in full_text.lower() or "academic reference manual" in full_text.lower() or "mathematical engineering" in full_text.lower():
+            prof = "math"
         else:
             prof = "general"
 
     is_cp = (prof == "cp")
     is_notes = (prof == "notes")
+    is_math = (prof == "math")
 
     # Rendering Invariants Verification
     escape_hits = [
@@ -361,7 +364,19 @@ def run_pass2_textual(pdf_path: Path, profile: str = "auto") -> Pass2TextualResu
         f"Broken/Tofu character '{m.group()}' (U+{ord(m.group()):04X}) at pos {m.start()}"
         for m in re.finditer(r"[\ufffd\u25a0\u25aa\u25ab]", full_text)
     ]
-    rendering_hits = escape_hits + placeholder_hits + delimiter_hits + latex_macro_hits + symbol_leak_hits + tofu_hits
+    informal_math_hits = [
+        f"Informal linear math approximation '{m.group()}' at pos {m.start()}"
+        for m in re.finditer(
+            r"\bP\([A-Za-z]\s*/\s*[A-Za-z]\)\s*=|"
+            r"\bP\([A-Za-z]\s*\|\s*[A-Za-z]\)\s*=\s*P\([A-Za-z]\s*[A-Za-z]\)\s*/\s*P\([A-Za-z]\)|"
+            r"\bsum\s*\([a-z]\s*=\s*\d+\s+to\s+[a-z0-9]+\)|"
+            r"\bintegral\s+[a-zA-Z]\([a-zA-Z]\)\s*d[a-zA-Z]|"
+            r"\blim\s*\([a-z]\s*->\s*\d+\)",
+            full_text,
+            re.IGNORECASE,
+        )
+    ]
+    rendering_hits = escape_hits + placeholder_hits + delimiter_hits + latex_macro_hits + symbol_leak_hits + tofu_hits + informal_math_hits
 
     errors = 0
     warnings = 0
@@ -383,6 +398,9 @@ def run_pass2_textual(pdf_path: Path, profile: str = "auto") -> Pass2TextualResu
     elif prof == "notes":
         if len(full_text.strip()) < 50:
             errors += 1
+    elif prof == "math":
+        if len(full_text.strip()) < 50:
+            errors += 1
     elif prof == "cp":
         has_samples = bool(re.search(r":::sample|\bInput\b|\bSample (?:Input|Tests)\b", full_text))
         if not has_samples:
@@ -398,7 +416,7 @@ def run_pass2_textual(pdf_path: Path, profile: str = "auto") -> Pass2TextualResu
     return Pass2TextualResult(
         total_text_length=len(full_text),
         devanagari_violations=devanagari_hits[:20],  # cap to 20 for report size
-        has_syllabus_index=has_syllabus or is_cp or is_notes,
+        has_syllabus_index=has_syllabus or is_cp or is_notes or is_math,
         phase_count_detected=phase_count,
         challenge_blocks_detected=challenge_count,
         branding_found=branding_found,

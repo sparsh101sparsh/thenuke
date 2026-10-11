@@ -41,6 +41,7 @@ from reportlab.platypus import (
 )
 
 from scripts.diagramming.vector_diagrams import get_diagram
+from scripts.diagramming.math_renderer import create_math_flowable
 from scripts.quotes.quote_library import get_quote
 
 logger = logging.getLogger(__name__)
@@ -113,7 +114,7 @@ def normalize_and_sanitize_markdown(text: str) -> str:
             return "\n" + after
         return "\n" + after
 
-    text = re.sub(r"\\n([a-zA-Z0-9\s.,;!?:()\[\]{}<>=+\-*/_]*|$)", n_replacer, text)
+    text = re.sub(r"\\n([a-zA-Z0-9 .,;!?:()\[\]{}<>=+\-*/_]*|$)", n_replacer, text)
 
     # Step 4: Convert ASCII tab characters to 4 spaces
     text = text.replace("\t", "    ")
@@ -121,8 +122,7 @@ def normalize_and_sanitize_markdown(text: str) -> str:
     # Step 5a: Convert Codeforces triple dollars $$$...$$$ to single dollar $...$
     text = re.sub(r"\$\$\$([^\$]+?)\$\$\$", r"$\1$", text)
 
-    # Step 5b: Convert alternative math delimiters \[...\] and \(...\) to ReportLab standard
-    text = re.sub(r"\\\[\s*([^\n\r]+?)\s*\\\]", r"$$\1$$", text)
+    # Step 5b: Normalize inline math \(...\) to $...$
     text = re.sub(r"\\\(\s*([^\n\r]+?)\s*\\\)", r"$\1$", text)
 
     # Step 5c: Normalize spaced inline math delimiters $ x $ to $x$
@@ -466,9 +466,11 @@ def md_to_reportlab_html(text: str) -> str:
         maths.append(rendered)
         return f"___MATH_PH_{idx}___"
 
-    # Display math $$...$$ first (strictly within block)
-    text = re.sub(r"\$\$([^\$]+?)\$\$", math_store, text)
-    # Inline math $...$ (strictly single-line, Pandoc-compliant non-space boundary)
+    # Display math $$...$$ and \[...\] first (strictly within block)
+    text = re.sub(r"\\\[(.*?)\\\]", math_store, text, flags=re.DOTALL)
+    text = re.sub(r"\$\$([^\$]+?)\$\$", math_store, text, flags=re.DOTALL)
+    # Inline math \(...\) and $...$ (strictly single-line, Pandoc-compliant non-space boundary)
+    text = re.sub(r"\\\((.+?)\\\)", math_store, text)
     text = re.sub(r"(?<!\\)\$(?!\s)([^\$\n\r]+?)(?<!\s)\$", math_store, text)
 
     # 2b. Sanitize bare LaTeX operators that leaked outside math blocks
@@ -610,6 +612,7 @@ class ReferenceManualBuilder:
 
     def __init__(self, output_path: Union[str, Path], topic: str = "Git", branding: Optional[str] = None):
         self.output_path = Path(output_path)
+        self.output_path.parent.mkdir(parents=True, exist_ok=True)
         self.topic = topic
         self.branding = branding
         self.styles = self._init_styles()
@@ -1356,14 +1359,45 @@ class ReferenceManualBuilder:
                 i += 1
                 continue
 
-            # 7e. Display Math Block: $$ formula $$
-            if line.strip().startswith("$$") and line.strip().endswith("$$") and len(line.strip()) > 4:
-                math_content = line.strip()[2:-2].strip()
-                html_m = latex_to_reportlab_html(math_content)
-                story.append(Spacer(1, 4))
-                story.append(safe_paragraph(html_m, self.styles["DisplayMath"]))
-                story.append(Spacer(1, 4))
-                i += 1
+            # 7e. Display Math Block: \[ ... \] or $$ ... $$ (single-line or multi-line)
+            s_line = line.strip()
+            if s_line.startswith(r"\[") or s_line.startswith("$$"):
+                is_bracket = s_line.startswith(r"\[")
+                delimiter = r"\]" if is_bracket else "$$"
+                start_delim = r"\[" if is_bracket else "$$"
+
+                math_content = ""
+                # Check single-line display math
+                if is_bracket and s_line.endswith(r"\]") and len(s_line) >= 4:
+                    math_content = s_line[2:-2].strip()
+                    i += 1
+                elif not is_bracket and s_line.endswith("$$") and len(s_line) >= 4 and s_line != "$$":
+                    math_content = s_line[2:-2].strip()
+                    i += 1
+                else:
+                    # Multi-line display math
+                    math_lines = []
+                    if s_line != start_delim:
+                        math_lines.append(s_line[len(start_delim):].strip())
+                    i += 1
+                    while i < n:
+                        curr_line = lines[i]
+                        curr_s = curr_line.strip()
+                        if curr_s.endswith(delimiter):
+                            if curr_s != delimiter:
+                                math_lines.append(curr_s[:-len(delimiter)].strip())
+                            i += 1
+                            break
+                        else:
+                            math_lines.append(curr_line.rstrip())
+                            i += 1
+                    math_content = "\n".join(math_lines).strip()
+
+                if math_content:
+                    math_flowable = create_math_flowable(math_content, is_display=True, styles=self.styles)
+                    story.append(Spacer(1, 4))
+                    story.append(math_flowable)
+                    story.append(Spacer(1, 4))
                 continue
 
             # 8. Callout Box: [MENTAL MODEL], [ENGINEERING GOTCHA], [INTERVIEW TIP], [INVARIANT], [RULE]

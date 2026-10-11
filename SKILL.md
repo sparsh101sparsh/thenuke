@@ -72,6 +72,9 @@ python thenuke_cli.py compile-git --output output/Git_Reference_Manual.pdf
 # 📝 Grounded Extractive Notes Synthesizer (from arbitrary ingested sources):
 python thenuke_cli.py ingest-notes "https://youtu.be/..." --topic "Modern Distributed Systems" --output output/Notes.pdf
 
+# 📐 Academic Mathematical Explanation & Typesetting:
+python thenuke_cli.py explain-math conditional-probability --output output/Conditional_Probability.pdf
+
 # Individual stages
 python thenuke_cli.py ingest "https://youtube.com/..." # Fast path: subtitles only (use --download-video for full streams)
 python thenuke_cli.py grill --preset senior_architect_faang
@@ -322,6 +325,84 @@ Test architecture:
 - `tests/test_diagramming_and_qa.py` — M4+M5: vector engine palette, MD parser, QA audit
 - `tests/test_cp_ingestion.py` — CP: Codeforces/LeetCode/AtCoder ingestion, LaTeX math preservation, sample boxes, end-to-end PDF & QA gate
 - `tests/test_rendering_invariants.py` — Rendering Invariants: escape artifact defense, math parity scoping, typography fidelity, XML resilience, and Pass 2 textual QA audits
+- `tests/test_mathematical_typesetting.py` — Academic Math: Rules A through L, conditional probability acceptance test, matrix/aligned flowables, Pass 2 textual QA gates
+
+## 📐 Mathematical Typesetting & Academic Notation Standards (Non-Negotiable)
+
+Whenever `thenuke` generates educational content, reference manuals, notes, mathematical explanations, competitive programming problem analyses, or PDFs containing mathematical expressions, it **strictly enforces professional, academically correct mathematical typesetting** resembling university textbooks and academic lecture notes.
+
+### 1. Core Requirement: Proper LaTeX Mathematical Notation
+All mathematical expressions **MUST** be written using proper LaTeX mathematical notation rather than informal, linear, plain-text approximations.
+- **Source Format:** LaTeX source with `\(` and `\)` for inline mathematics, and `\[` and `\]` (or `$$...$$`) for display mathematics.
+- **Strict Prohibition of Linear Approximations:**
+  - ❌ NEVER write informal text approximations like:
+    `P(A|B) = P(A B) / P(B), where P(B) > 0`
+    `sum(i=1 to n) xi`
+    `sqrt(a+b)`
+    `integral f(x) dx`
+    `lim(x->0) f(x)`
+    `a/b` (in displayed math)
+  - ✅ ALWAYS write properly typeset LaTeX:
+    ```latex
+    \[
+    P(A \mid B) = \frac{P(A \cap B)}{P(B)},
+    \qquad P(B) > 0
+    \]
+    ```
+- **Visual Output Standard:** Output PDFs must render genuine horizontal fraction bars, aligned radicals, matrix brackets, and proper sub/superscripts rather than raw unrendered LaTeX source strings.
+
+### 2. Comprehensive Mathematical Formatting Rules (Rules A through L)
+
+| Rule | Topic | Informal Plain-Text (BANNED) | Acacemic LaTeX Standard (MANDATORY) |
+| :--- | :--- | :--- | :--- |
+| **A** | **Fractions** | `a/b` | `\[ \frac{a}{b} \]` (Inline: `\(\frac{a}{b}\)` or compact `\(a/b\)` only when readability requires it) |
+| **B** | **Conditional Probability** | `P(A/B) = P(AB)/P(B)` | `\[ P(A \mid B) = \frac{P(A \cap B)}{P(B)}, \qquad P(B) > 0 \]` |
+| **C** | **Subscripts** | `x1, x2, aij` | `\(x_1,\quad x_2,\quad a_{ij}\)` |
+| **D** | **Superscripts & Powers** | `x^2, a^n` | `\[ x^2,\qquad a^n \]` |
+| **E** | **Roots & Radicals** | `sqrt(x), sqrt(a+b)` | `\[ \sqrt{x},\qquad \sqrt{a+b} \]` |
+| **F** | **Summations** | `sum(i=1 to n) xi` | `\[ \sum_{i=1}^{n} x_i \]` |
+| **G** | **Integrals** | `integral f(x) dx` | `\[ \int f(x)\,dx \]` |
+| **H** | **Limits** | `lim(x->0) f(x)` | `\[ \lim_{x \to 0} f(x) \]` |
+| **I** | **Matrices** | ASCII tables or linear rows | `\[ A = \begin{bmatrix} a_{11} & a_{12} \\ a_{21} & a_{22} \end{bmatrix} \]` |
+| **J** | **Sets & Logic** | `union, intersect, implies` | `\[ A \cup B,\quad A \cap B,\quad A \subseteq B,\quad A \Rightarrow B \]` |
+| **K** | **Greek Letters** | `alpha, beta, theta` | `\(\alpha,\quad \beta,\quad \theta,\quad \lambda,\quad \mu,\quad \sigma\)` |
+| **L** | **Multi-Step Derivations** | Unaligned multi-line text | `\[ \begin{aligned} x^2 - 5x + 6 &= 0 \\ (x-2)(x-3) &= 0 \\ x &= 2 \quad \text{or} \quad x = 3 \end{aligned} \]` |
+
+### 3. Inline Mathematics vs Display Mathematics
+- **Use Inline Mathematics (`\( ... \)`)** for short expressions embedded in prose sentences:
+  > *"The variable \(x\) represents the unknown value, and \(x > 0\)."*
+- **Use Display Mathematics (`\[ ... \]`)** for:
+  - Foundational formulas, definitions, and theorems.
+  - Vertical fractions requiring clear multi-level structure.
+  - Multi-step algebraic or probabilistic derivations.
+  - Expressions that need visual emphasis or student memorization.
+- **Natural Reading Flow:** Maintain smooth syntactic flow; never place isolated single symbols on separate display lines.
+
+### 4. Mathematical Correctness & Condition Preservation
+Typesetting **must NEVER change the mathematical meaning**. Before formatting any expression:
+1. Identify the intended mathematical operation.
+2. Preserve all variables, domains, and boundary conditions (e.g. \(P(B) > 0\)).
+3. Use the correct operator and grouping symbols.
+4. Verify numerator and denominator placement.
+5. Preserve inequalities, equalities, and logical relationships.
+6. Verify parentheses, brackets, subscripts, and superscripts.
+7. Preserve the instructor's original mathematical meaning.
+- **Critical Distinction:** Distinguish \(P(A \mid B)\) from the ratio \(\frac{P(A)}{P(B)}\). These two expressions are fundamentally non-equivalent.
+- **No Guesswork on Ambiguities:** If an ingested source contains an incomplete, ambiguous, or incorrect formula, flag the issue clearly rather than silently inventing missing symbols.
+
+### 5. Source Material Preservation
+When rewriting teachers' notes or converting multi-modal sources into reference manuals:
+- Preserve original syllabus coverage, definitions, sequence of topics, and valid notation.
+- Do not replace an instructor's pedagogical method with an unrelated approach.
+- Do not omit essential conditions attached to theorems or formulas.
+- Mathematical typesetting is an aesthetic and academic enhancement, not permission to alter educational content.
+
+### 6. Visual LaTeX Rendering Architecture & QA Gate
+- **Render Engine (`scripts/diagramming/math_renderer.py`):** Display LaTeX expressions are rendered into 300 DPI transparent image flowables via Matplotlib mathtext / Typst vector compilers and embedded into ReportLab documents.
+- **Pass 2 Textual QA Gate:** `qa_audit_engine.py` inspects extracted text layers to guarantee:
+  - Zero informal linear math approximations (`P(A/B) =`, `sum(i=1 to n)`, etc.).
+  - Zero unrendered LaTeX macro commands (`\frac`, `\sum`, `\begin`, `\end`, etc.).
+  - Zero broken tofu boxes (`■`, `\ufffd`).
 
 ## Watertight Rendering Invariants Contract
 

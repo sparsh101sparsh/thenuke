@@ -19,6 +19,7 @@ Commands:
   compile   Run only the PDF compiler
   qa        Run only the QA audit on an existing PDF
   clean     Manually trigger post-clearance cleanup
+  explain-math Explain a mathematical topic with academic LaTeX notation & PDF
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import shutil
 import sys
 from dataclasses import asdict
@@ -530,6 +532,7 @@ def build_parser() -> argparse.ArgumentParser:
     fp_p.add_argument("--json", action="store_true", help="Output raw JSON metadata instead of Markdown")
 
     # compile-git — compile canonical Git reference manual
+    # compile-git — compile canonical Git reference manual
     cg_p = sub.add_parser("compile-git", help="Compile the canonical Git: Architecture & Internals reference manual")
     cg_p.add_argument("--output", "-o", default=None, help="Target output PDF path")
 
@@ -538,6 +541,12 @@ def build_parser() -> argparse.ArgumentParser:
     in_p.add_argument("sources", nargs="+", help="URLs or local file paths to ingest")
     in_p.add_argument("--topic", default="Engineering Reference", help="Manual topic title")
     in_p.add_argument("--output", "-o", default=None, help="Target output PDF path")
+
+    # explain-math — Mathematical Explanation & Professional Typesetting
+    em_p = sub.add_parser("explain-math", help="Generate professionally typeset mathematical notes and compile to PDF")
+    em_p.add_argument("topic", nargs="?", default="conditional-probability", help="Mathematical topic or query")
+    em_p.add_argument("--output", "-o", default=None, help="Target output PDF path")
+    em_p.add_argument("--markdown", action="store_true", help="Print generated Markdown to stdout")
 
     return parser
 
@@ -657,6 +666,27 @@ def main() -> None:
         report = run_qa_audit(pdf_out, profile="notes")
         print(report.summary)
         print(f"Extractive Notes PDF: {pdf_out}")
+        sys.exit(0 if report.overall_passed else 1)
+
+    elif args.command == "explain-math":
+        from scripts.synthesis.math_explainer import explain_math_topic
+        from scripts.diagramming.reportlab_engine import ReferenceManualBuilder
+        from scripts.qa.qa_audit_engine import run_qa_audit
+
+        topic_clean = args.topic.strip()
+        md_text = explain_math_topic(topic_clean, branding=BRANDING)
+        if args.markdown:
+            print(md_text)
+
+        safe_topic = re.sub(r"[^a-zA-Z0-9_-]", "_", topic_clean)
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        out_pdf = Path(args.output) if args.output else OUTPUT_DIR / f"{safe_topic}_Reference_Manual_{ts}.pdf"
+        builder = ReferenceManualBuilder(out_pdf, topic=topic_clean.replace("-", " ").title(), branding=BRANDING)
+        pdf_out = builder.compile(md_text)
+
+        report = run_qa_audit(pdf_out, profile="math")
+        print(report.summary)
+        print(f"Math Reference Manual PDF: {pdf_out}")
         sys.exit(0 if report.overall_passed else 1)
 
 
