@@ -43,6 +43,9 @@ output/
 scratch/
 assets/
 *.pdf
+!tests/fixtures/*.pdf
+!tests/fixtures/**/*.pdf
 nuke_ingestion_corpus.json
 grilling_profile.json
 qa_report.json
+.agents/

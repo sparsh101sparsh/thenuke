@@ -66,13 +66,35 @@ python thenuke_cli.py fetch-problem "https://www.interviewbit.com/problems/max-s
 # Full compilation to production-grade PDF:
 python thenuke_cli.py run "https://codeforces.com/problemset/problem/1915/C" --preset senior_architect_faang --skip-cleanup
 
+# 📚 Canonical Git Reference Manual Compiler:
+python thenuke_cli.py compile-git --output output/Git_Reference_Manual.pdf
+
+# 📝 Grounded Extractive Notes Synthesizer (from arbitrary ingested sources):
+python thenuke_cli.py ingest-notes "https://youtu.be/..." --topic "Modern Distributed Systems" --output output/Notes.pdf
+
 # Individual stages
-python thenuke_cli.py ingest "https://youtube.com/..."
+python thenuke_cli.py ingest "https://youtube.com/..." # Fast path: subtitles only (use --download-video for full streams)
 python thenuke_cli.py grill --preset senior_architect_faang
 python thenuke_cli.py synthesize
-python thenuke_cli.py compile output/thenuke_manual_*.md
-python thenuke_cli.py qa output/thenuke_manual_*.pdf --report output/qa_report.json
+python thenuke_cli.py compile output/thenuke_manual_*.md --branding "Prepared by @issparsh @sumitsingh097"
+python thenuke_cli.py qa output/thenuke_manual_*.pdf --profile auto --report output/qa_report.json
 python thenuke_cli.py clean
+```
+
+## Installation
+
+```bash
+# Editable install with core dependencies:
+pip install -e .
+
+# Or install from requirements.txt:
+pip install -r requirements.txt
+
+# Optional extras:
+pip install -e ".[cp]"          # Competitive programming tools (online-judge-tools)
+pip install -e ".[whisper]"     # Local audio transcription (faster-whisper)
+pip install -e ".[dev]"         # Test suite runner (pytest)
+pip install -e ".[cp,whisper,dev]" # All optional extras
 ```
 
 ## Pipeline Stages
@@ -98,6 +120,10 @@ python thenuke_cli.py clean
               ▼
 [R1: Ingestion Engine]  →  nuke_ingestion_corpus.json
               │
+              ├──► [Evidence Layer: CorpusIndexer]  →  EvidenceSpans (transcripts, code, tables, prose)
+              │         │
+              │         ▼
+              │    [Extractive Notes Synthesizer]  →  Publication-grade grounded notes
               ▼
 [R2: Grilling Protocol] →  grilling_profile.json
   • Level of Detail: foundations | resource_parity | senior_architect
@@ -115,15 +141,16 @@ python thenuke_cli.py clean
               │
               ▼
 [R4: Vector & Branding] →  thenuke_manual_*.pdf
-  • PyMuPDF vector shapes: Call Stack, Heap, Event Loop, Prototype Chain
+  • PyMuPDF / ReportLab vector shapes: Call Stack, Heap, Event Loop, Commit DAGs
   • Monochrome palette: #000000 / #222222 / #CCCCCC / #F8F8F8
   • Official X/Twitter vector glyph + "Prepared by @issparsh @sumitsingh097"
   • ISO A4, Helvetica body, Courier code, running headers & footers
               │
               ▼
-[R5: QA Audit]  →  qa_report.json
-  • Pass 1 Visual: text overflow, orphan headers, margin violations
-  • Pass 2 Textual: zero Devanagari, syllabus index, branding, ES2024+ signals
+[R5: Multi-Profile QA Audit]  →  qa_report.json
+  • Profiles: git | js | cp | notes | auto
+  • Pass 1 Visual: 150 DPI rasterization, text overflow, orphan headers, margin bounds
+  • Pass 2 Textual: zero Devanagari, macro escapes, profile-specific structure & branding
               │
               ▼
 [R6: Cleanup]
@@ -266,6 +293,7 @@ python thenuke_cli.py clean
 |------|---------|-------|
 | Python | 3.10+ | 3.14 tested on Apple M4 |
 | PyMuPDF | 1.24+ | `pip install pymupdf` |
+| reportlab | 4.1+ | `pip install reportlab>=4.1.0` (Publication PDF compiler) |
 | online-judge-tools | 11.5+ | `pip install online-judge-tools` (`oj`, `oj-api`) |
 | beautifulsoup4 | 4.15+ | `pip install beautifulsoup4` |
 | faster-whisper | 1.2.1+ | `pip install faster-whisper` |

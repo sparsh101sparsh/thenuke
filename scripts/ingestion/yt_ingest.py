@@ -34,6 +34,8 @@ def is_youtube_url(url: str) -> bool:
     if not url or not isinstance(url, str):
         return False
     parsed = urlparse(url.strip())
+    if (parsed.scheme or "").lower() not in {"http", "https"}:
+        return False
     host = (parsed.hostname or "").lower()
     return host in {
         "youtube.com",

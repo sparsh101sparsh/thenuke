@@ -222,11 +222,11 @@ class CPProblem:
             lines.append(f":::sample {s.sample_index}")
             lines.append("#### Input")
             lines.append("```")
-            lines.append(s.input_text.strip())
+            lines.append(s.input_text.strip("\r\n"))
             lines.append("```")
             lines.append("#### Output")
             lines.append("```")
-            lines.append(s.output_text.strip())
+            lines.append(s.output_text.strip("\r\n"))
             lines.append("```")
             if s.explanation:
                 lines.append("#### Explanation")
@@ -384,10 +384,10 @@ def fetch_via_oj_api(url: str, timeout: int = 10) -> Optional[Dict[str, Any]]:
 def normalize_math_delimiters(text: str) -> str:
     """Normalize various platform math markers ($$$, \\(...\\), <var>) to standard LaTeX $...$."""
     # 1. Codeforces $$$...$$$ -> $...$
-    text = re.sub(r"\$\$\$([^\$]+)\$\$\$", r"$\1$", text)
+    text = re.sub(r"\$\$\$(.+?)\$\$\$", r"$\1$", text, flags=re.DOTALL)
 
     # 2. AtCoder / standard LaTeX \\(...\\) -> $...$
-    text = re.sub(r"\\\((.+?)\\\)", r"$\1$", text)
+    text = re.sub(r"\\\((.+?)\\\)", r"$\1$", text, flags=re.DOTALL)
 
     # 3. Display math \\[...\\] -> $$...$$
     text = re.sub(r"\\\[(.+?)\\\]", r"$$\1$$", text, flags=re.DOTALL)
@@ -566,21 +566,21 @@ def extract_codeforces_problem(url: str, html_text: Optional[str] = None) -> CPP
             inputs = sbox.xpath(".//div[@class='input']/pre")
             outputs = sbox.xpath(".//div[@class='output']/pre")
             for idx, (in_pre, out_pre) in enumerate(zip(inputs, outputs), start=1):
-                # Extract input lines preserving multi-line breaks
+                # Extract input lines preserving multi-line breaks and indentation
                 in_lines_divs = in_pre.xpath(".//div[contains(@class, 'test-example-line')]")
                 if in_lines_divs:
-                    in_text = "\n".join(d.text_content().strip() for d in in_lines_divs)
+                    in_text = "\n".join(d.text_content() for d in in_lines_divs)
                 else:
-                    # Fallback to inner HTML with br tags
-                    in_text = "\n".join(line.rstrip() for line in in_pre.text_content().splitlines())
-                in_text = in_text.strip()
+                    # Fallback to inner text
+                    in_text = in_pre.text_content()
+                in_text = in_text.strip("\r\n")
 
                 out_lines_divs = out_pre.xpath(".//div[contains(@class, 'test-example-line')]")
                 if out_lines_divs:
-                    out_text = "\n".join(d.text_content().strip() for d in out_lines_divs)
+                    out_text = "\n".join(d.text_content() for d in out_lines_divs)
                 else:
-                    out_text = "\n".join(line.rstrip() for line in out_pre.text_content().splitlines())
-                out_text = out_text.strip()
+                    out_text = out_pre.text_content()
+                out_text = out_text.strip("\r\n")
 
                 samples.append(CPSample(sample_index=idx, input_text=in_text, output_text=out_text))
         sample_tests_el.getparent().remove(sample_tests_el)
@@ -811,12 +811,12 @@ def extract_atcoder_problem(url: str, html_text: Optional[str] = None) -> CPProb
             s_idx_m = re.search(r"sample input\s*(\d+)", header_lower)
             s_idx = int(s_idx_m.group(1)) if s_idx_m else len(samples_in) + 1
             pre_el = p.find(".//pre")
-            samples_in[s_idx] = pre_el.text_content().strip() if pre_el is not None else ""
+            samples_in[s_idx] = pre_el.text_content().strip("\r\n") if pre_el is not None else ""
         elif "sample output" in header_lower:
             s_idx_m = re.search(r"sample output\s*(\d+)", header_lower)
             s_idx = int(s_idx_m.group(1)) if s_idx_m else len(samples_out) + 1
             pre_el = p.find(".//pre")
-            out_val = pre_el.text_content().strip() if pre_el is not None else ""
+            out_val = pre_el.text_content().strip("\r\n") if pre_el is not None else ""
             # Check for explanation text following pre tag
             p_tags = p.xpath(".//p")
             exp_val = " ".join([clean_html_formatting_to_markdown(pt) for pt in p_tags]).strip()

@@ -385,12 +385,12 @@ Adheres to a minimalist, high-contrast monochrome aesthetic for focused reading:
 
 ## 💻 Cross-Platform Installation
 
-### 7.1 Automated 1-Line Installation (macOS / Linux)
+### 7.1 Automated One-Line Install
 
 Run this single command to clone the repository, install Python dependencies, and register the skill in your Antigravity environment:
 
 ```bash
-git clone https://github.com/sparsh101sparsh/thenuke.git ~/.gemini/config/skills/thenuke && cd ~/.gemini/config/skills/thenuke && pip install -r requirements.txt
+git clone https://github.com/sparsh101sparsh/thenuke.git ~/.gemini/config/skills/thenuke && cd ~/.gemini/config/skills/thenuke && pip install -e ".[cp,whisper,dev]"
 ```
 
 ---
@@ -420,12 +420,30 @@ cd thenuke
 ```
 
 #### Step 3: Install Python Dependencies
+
 ```bash
 # Python 3.10+ recommended
+# Standard editable install with core dependencies:
+pip install -e .
+
+# Or using requirements.txt:
 pip install -r requirements.txt
+
+# With optional extras:
+# For Competitive Programming ingestion (online-judge-tools + beautifulsoup4):
+pip install -e ".[cp]"
+
+# For local Whisper audio transcription (faster-whisper):
+pip install -e ".[whisper]"
+
+# For development and running the test suite (pytest):
+pip install -e ".[dev]"
+
+# Or install all features:
+pip install -e ".[cp,whisper,dev]"
 ```
 
-*(On macOS with system-managed Python, use `pip install --user --break-system-packages -r requirements.txt` or a dedicated virtual environment).*
+*(On macOS with system-managed Python, use `pip install --break-system-packages -e .` or a dedicated virtual environment).*
 
 ---
 
@@ -435,7 +453,7 @@ To make `thenuke` globally accessible to your Google Antigravity pair-programmin
 
 ```bash
 mkdir -p ~/.gemini/config/skills/thenuke
-cp -r scripts tests thenuke_cli.py SKILL.md requirements.txt LICENSE ~/.gemini/config/skills/thenuke/
+cp -r scripts tests thenuke_cli.py pyproject.toml SKILL.md requirements.txt LICENSE ~/.gemini/config/skills/thenuke/
 ```
 
 Once installed, simply prompt your Antigravity agent:
@@ -474,14 +492,35 @@ python thenuke_cli.py run \
 | Flag | Type | Description |
 |---|---|---|
 | `sources` | `positional` | One or more URLs or local file paths |
+| `--download-video` | `boolean` | Download 720p video stream and extract frames (default: False, fast subtitles-only path) |
+| `--subtitles-only` | `boolean` | Fast path: ingest subtitles only (default) |
+| `--ocr-frames` | `boolean` | Run OCR on video frames instead of visual self-analysis |
 | `--non-interactive` | `boolean` | Skips terminal interview; applies preset configuration |
 | `--preset` | `string` | Grilling preset: `foundations`, `resource_parity`, `senior_architect_faang` |
 | `--skip-cleanup` | `boolean` | Bypasses confirmation prompt for intermediate file cleanup |
 
+#### `compile-git` — Canonical Git Reference Manual
+Compiles the authoritative, publication-grade *Git: Architecture & Internals* manual with vector DAGs, commit trees, LCA merges, and 9-phase curriculum.
+```bash
+python thenuke_cli.py compile-git --output ~/thenuke_workspace/output/Git_Reference_Manual.pdf
+```
+
+#### `ingest-notes` — Grounded Extractive Notes Synthesizer
+Ingests multi-modal resources, maps them into an explicit `CorpusIndexer` (`EvidenceSpan`) layer, and synthesizes publication-grade study notes directly grounded in the source corpus (transcripts, code snippets, key concepts) with zero canned template text.
+```bash
+python thenuke_cli.py ingest-notes "https://youtu.be/..." --topic "Modern Distributed Systems" --output ~/thenuke_workspace/output/Notes.pdf
+```
+
+#### `fetch-problem` — Competitive Programming Problem Fetcher
+Scrapes and parses competitive programming problem statements across Codeforces, LeetCode, AtCoder, CodeChef, HackerRank, GeeksforGeeks, and InterviewBit. Preserves exact sample indentation and LaTeX mathematics.
+```bash
+python thenuke_cli.py fetch-problem "https://codeforces.com/problemset/problem/1915/C"
+```
+
 #### `ingest` — Ingestion Only
 ```bash
 python thenuke_cli.py ingest "https://youtube.com/..." "/path/to/slides.pptx"
-# Serializes to ~/thenuke_workspace/nuke_ingestion_corpus.json
+# Serializes to ~/thenuke_workspace/nuke_ingestion_corpus.json (defaults to fast subtitles-only)
 ```
 
 #### `grill` — Scope Alignment Only
@@ -505,8 +544,8 @@ python thenuke_cli.py compile ~/thenuke_workspace/output/thenuke_manual_*.md \
 
 #### `qa` — Quality Audit Inspection
 ```bash
-python thenuke_cli.py qa ~/thenuke_workspace/output/thenuke_manual_*.pdf --strict
-# Produces ~/thenuke_workspace/output/qa_report.json (exits 1 on defects)
+python thenuke_cli.py qa ~/thenuke_workspace/output/thenuke_manual_*.pdf --profile auto --strict
+# Profiles: auto | git | js | cp | notes. Produces qa_report.json (exits 1 on defects).
 ```
 
 #### `clean` — Manual Data Wipe

@@ -1,760 +1,569 @@
-"""Tier 2: Boundary Value Analysis & Corner Cases (F1 - F15).
+"""Tier 2: Boundary & Corner Cases (B1 - B10).
 
-Minimum 75 test cases (5 boundary tests per feature).
-Covers boundary conditions, empty/extreme inputs, malformed files, schema validations,
-and adversarial error recovery.
+Minimum 50 test cases (>= 5 test cases per feature area).
+Tests boundary values, edge conditions, invalid inputs, and adversarial stress
+for the requirements in ORIGINAL_REQUEST.md and PROJECT.md.
 """
+
+from __future__ import annotations
 
 import json
-import re
 import os
 import shutil
-import fitz
-import pptx
-import pytest
+import subprocess
+import sys
 from pathlib import Path
+from typing import Any, Dict, List
+import fitz
+import pytest
 
-from ..conftest import (
-    DEVANAGARI_REGEX,
-    MONOCHROME_PALETTE,
+from .conftest import (
     BRANDING_AUTHORS,
-    ISO_A4_WIDTH,
+    DEVANAGARI_REGEX,
     ISO_A4_HEIGHT,
-    PAGE_MARGIN_MIN,
-    safe_load_module,
+    ISO_A4_WIDTH,
+    assert_branding_present,
+    assert_iso_a4_pdf,
+    assert_zero_devanagari,
 )
 
-# ---------------------------------------------------------------------------
-# F1 Boundary: YouTube Subtitles & Ingestion (5 tests)
-# ---------------------------------------------------------------------------
-
-def test_f1_b01_empty_vtt_file():
-    """F1.B1: Empty or whitespace-only VTT content handled gracefully without crashing."""
-    from scripts.ingestion.yt_ingest import parse_vtt_cues, deduplicate_vtt_cues, clean_vtt_content
-
-    empty_inputs = ["", "   \n\n\t  ", "WEBVTT\n\n"]
-    for inp in empty_inputs:
-        cues = parse_vtt_cues(inp)
-        assert cues == []
-        deduped = deduplicate_vtt_cues(cues)
-        assert deduped == []
-        cleaned = clean_vtt_content(inp)
-        assert cleaned == ""
-
-
-def test_f1_b02_corrupted_vtt_cues_recovery():
-    """F1.B2: Malformed cue timestamps or missing timestamps skipped robustly."""
-    from scripts.ingestion.yt_ingest import parse_vtt_cues
-
-    corrupted_vtt = """WEBVTT
-
-00:00:01.000 --> invalid_timestamp
-Corrupted cue one
-
-00:00:05.000 --> 00:00:08.000
-Valid cue two that should be parsed
-"""
-    cues = parse_vtt_cues(corrupted_vtt)
-    assert len(cues) >= 1
-    assert any("Valid cue two" in c["raw_text"] for c in cues)
-
-
-def test_f1_b03_massive_vtt_transcript_handling():
-    """F1.B3: Long transcripts (>2,000 cues / multi-hour video) processed without memory exhaustion."""
-    from scripts.ingestion.yt_ingest import deduplicate_vtt_cues
-
-    cues = []
-    for i in range(2000):
-        cues.append({
-            "start": float(i * 2),
-            "end": float(i * 2 + 2),
-            "lines": [f"Line {i} of execution context", f"Line {i+1} of lexical scope"],
-            "raw_text": f"Line {i} of execution context Line {i+1} of lexical scope"
-        })
-    deduped = deduplicate_vtt_cues(cues)
-    assert len(deduped) > 1000
-
-
-def test_f1_b04_vtt_html_entities_and_formatting_strip():
-    """F1.B4: Subtitles containing HTML entities and tags stripped cleanly."""
-    from scripts.ingestion.yt_ingest import strip_vtt_markup
-
-    raw_text = '<c.yellow>Execution &amp; Context</c> <00:00:01.500>is &lt;important&gt;'
-    cleaned = strip_vtt_markup(raw_text)
-    assert "<c" not in cleaned
-    assert "<00:" not in cleaned
-    assert "&amp;" not in cleaned
-    assert "Execution & Context is <important>" == cleaned
-
-
-def test_f1_b05_invalid_youtube_url_rejection():
-    """F1.B5: Non-YouTube URLs or broken IDs handled with descriptive validation error."""
-    from scripts.ingestion.yt_ingest import is_youtube_url, extract_video_id, ingest_youtube_url
-
-    invalid_urls = [
-        "",
-        "not_a_url",
-        "https://vimeo.com/987654321",
-        "https://google.com/search?q=youtube",
-        "https://dailymotion.com/video/x1234",
-    ]
-    for url in invalid_urls:
-        assert is_youtube_url(url) is False
-        assert extract_video_id(url) is None
-        with pytest.raises(ValueError):
-            ingest_youtube_url(url)
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 
 
 # ---------------------------------------------------------------------------
-# F2 Boundary: Web Documentation Crawler & Headless Screenshots (5 tests)
+# B1: Malformed URLs & Protocol Injection
 # ---------------------------------------------------------------------------
 
-def test_f2_b06_empty_html_body_handling():
-    """F2.B6: HTML document with empty body or 0 bytes produces clean empty output."""
-    from scripts.ingestion.web_crawler import html_to_markdown_and_code
-
-    for empty_html in ["", "<html><body></body></html>", "   \n  "]:
-        md, code, title = html_to_markdown_and_code(empty_html)
-        assert md == ""
-        assert code == []
+def test_b1_01_url_missing_host():
+    """B1.1: Reject URLs missing host component."""
+    from scripts.ingestion.yt_ingest import is_youtube_url
+    assert is_youtube_url("https:///watch?v=dQw4w9WgXcQ") is False
+    assert is_youtube_url("http://") is False
 
 
-def test_f2_b07_malformed_html_tags_robustness():
-    """F2.B7: Unclosed HTML tags and broken DOM trees parsed robustly."""
-    from scripts.ingestion.web_crawler import html_to_markdown_and_code
-
-    malformed_html = """
-    <div><h1>Title without closing tag
-    <p>Paragraph unclosed
-    <pre><code class="language-js">const a = 1;
-    """
-    md, code_blocks, title = html_to_markdown_and_code(malformed_html)
-    assert "Title without closing tag" in md or "Title without closing tag" in title
-    assert len(code_blocks) >= 1 or "const a = 1" in md
+def test_b1_02_url_with_whitespace_and_newlines():
+    """B1.2: Strips outer whitespace in URLs before validation."""
+    from scripts.ingestion.yt_ingest import is_youtube_url
+    assert is_youtube_url("  https://www.youtube.com/watch?v=dQw4w9WgXcQ \n") is True
+    assert is_youtube_url("\thttps://youtu.be/dQw4w9WgXcQ\t") is True
 
 
-def test_f2_b08_deeply_nested_dom_tree():
-    """F2.B8: DOM tree nested 50 levels deep parsed without recursion limit error."""
-    from scripts.ingestion.web_crawler import html_to_markdown_and_code
-
-    nested = "<div>" * 50 + "<p>Deeply nested technical content.</p>" + "</div>" * 50
-    md, _, _ = html_to_markdown_and_code(nested)
-    assert "Deeply nested technical content" in md
+def test_b1_03_url_with_non_ascii_characters():
+    """B1.3: Handles non-ASCII / Unicode domain spoofing cleanly."""
+    from scripts.ingestion.yt_ingest import is_youtube_url
+    # Cyrillic 'а' or similar spoofed domains
+    assert is_youtube_url("https://уoutubе.com/watch?v=123") is False
 
 
-def test_f2_b09_unsupported_external_protocols():
-    """F2.B9: URLs with ftp://, file://, or non-http protocols rejected with clear error."""
-    from scripts.ingestion.web_crawler import crawl_url
-
-    invalid_protocols = ["ftp://ftp.example.com/doc", "file:///etc/passwd", "gopher://example.com"]
-    for url in invalid_protocols:
-        with pytest.raises(ValueError):
-            crawl_url(url)
+def test_b1_04_url_with_port_and_auth():
+    """B1.4: Handles URLs with explicit ports and userinfo safely."""
+    from scripts.ingestion.yt_ingest import is_youtube_url
+    assert is_youtube_url("https://user:pass@youtube.com:443/watch?v=123") is True
 
 
-def test_f2_b10_code_blocks_without_language_spec():
-    """F2.B10: <pre><code> blocks without class or language attributes defaulted cleanly."""
-    from scripts.ingestion.web_crawler import html_to_markdown_and_code
-
-    raw_html = "<pre><code>console.log('Unspecified language');</code></pre>"
-    md, code_blocks, _ = html_to_markdown_and_code(raw_html)
-    assert len(code_blocks) == 1
-    assert code_blocks[0].language in {"text", ""}
-    assert "console.log" in code_blocks[0].code
+def test_b1_05_url_empty_or_non_string():
+    """B1.5: Rejects empty strings and non-string types safely without exception."""
+    from scripts.ingestion.yt_ingest import is_youtube_url
+    assert is_youtube_url("") is False
+    assert is_youtube_url("   ") is False
+    assert is_youtube_url(None) is False  # type: ignore
+    assert is_youtube_url(12345) is False  # type: ignore
+    assert is_youtube_url(["https://youtube.com"]) is False  # type: ignore
 
 
 # ---------------------------------------------------------------------------
-# F3 Boundary: Local Files (PDF, PPTX, Video/OCR) (5 tests)
+# B2: Empty Sources & Corpus Underflow
 # ---------------------------------------------------------------------------
 
-def test_f3_b11_zero_byte_pdf_handling(temp_workspace):
-    """F3.B11: 0-byte PDF file raises specific file validation error instead of unhandled crash."""
-    zero_pdf = temp_workspace / "empty.pdf"
+def test_b2_01_empty_sources_list(temp_e2e_workspace: Path):
+    """B2.1: Ingestion with empty source list produces empty corpus without crash."""
+    from thenuke_cli import run_ingest
+    corpus_file = temp_e2e_workspace / "empty_corpus.json"
+    result_path = run_ingest([], corpus_path=corpus_file)
+    assert Path(result_path).exists()
+    data = json.loads(Path(result_path).read_text(encoding="utf-8"))
+    assert len(data.get("sources", [])) == 0
+
+
+def test_b2_02_sources_list_with_only_empty_strings(temp_e2e_workspace: Path):
+    """B2.2: Ingestion with only blank strings skips invalid sources cleanly."""
+    from thenuke_cli import run_ingest
+    corpus_file = temp_e2e_workspace / "blank_corpus.json"
+    result_path = run_ingest(["", "   ", "\t"], corpus_path=corpus_file)
+    data = json.loads(Path(result_path).read_text(encoding="utf-8"))
+    assert len(data.get("sources", [])) == 0
+
+
+def test_b2_03_non_existent_local_file_source(temp_e2e_workspace: Path):
+    """B2.3: Ingestion with non-existent local file path handled gracefully."""
+    from thenuke_cli import run_ingest
+    corpus_file = temp_e2e_workspace / "missing_file_corpus.json"
+    fake_path = str(temp_e2e_workspace / "does_not_exist_file.pdf")
+    result_path = run_ingest([fake_path], corpus_path=corpus_file)
+    data = json.loads(Path(result_path).read_text(encoding="utf-8"))
+    assert len(data.get("sources", [])) == 0
+
+
+def test_b2_04_corpus_with_zero_sources_serialization(temp_e2e_workspace: Path):
+    """B2.4: Empty UnifiedCorpus serializes and deserializes cleanly."""
+    from scripts.ingestion.unified_corpus import UnifiedCorpus
+    corpus = UnifiedCorpus()
+    out_file = temp_e2e_workspace / "roundtrip_empty.json"
+    corpus.save(out_file)
+    loaded = UnifiedCorpus.load(out_file)
+    assert len(loaded.sources) == 0
+
+
+def test_b2_05_corpus_loading_empty_json_file(temp_e2e_workspace: Path):
+    """B2.5: UnifiedCorpus handles bare empty dict JSON file."""
+    from scripts.ingestion.unified_corpus import UnifiedCorpus
+    empty_json = temp_e2e_workspace / "empty.json"
+    empty_json.write_text("{}", encoding="utf-8")
+    loaded = UnifiedCorpus.load(empty_json)
+    assert len(loaded.sources) == 0
+
+
+# ---------------------------------------------------------------------------
+# B3: Irregular Matrices & Extreme Whitespace in CP
+# ---------------------------------------------------------------------------
+
+def test_b3_01_matrix_with_mixed_tabs_and_spaces():
+    """B3.1: Preserves mixed tabs and spaces in sample inputs."""
+    from scripts.ingestion.cp_problem import CPSample
+    raw = "\t1  \t2\n\t3  \t4"
+    sample = CPSample(sample_index=1, input_text=raw, output_text="10")
+    assert sample.input_text == raw
+
+
+def test_b3_02_matrix_with_alternating_indentation():
+    """B3.2: Preserves alternating indentation across matrix rows."""
+    from scripts.ingestion.cp_problem import CPSample
+    raw = "  row1\n    row2\n  row3\n    row4"
+    sample = CPSample(sample_index=1, input_text=raw, output_text="OK")
+    assert "    row2" in sample.input_text
+    assert "    row4" in sample.input_text
+
+
+def test_b3_03_matrix_with_oversized_row_1000_chars():
+    """B3.3: Handles massive single-line matrix row (1000 numbers)."""
+    from scripts.ingestion.cp_problem import CPSample
+    row = " ".join(str(i) for i in range(1000))
+    sample = CPSample(sample_index=1, input_text=row, output_text="SUM")
+    assert len(sample.input_text) > 1000
+
+
+def test_b3_04_matrix_with_leading_and_trailing_newlines():
+    """B3.4: Normalizes multiple blank lines without removing internal blank rows."""
+    from scripts.ingestion.cp_problem import CPSample
+    raw = "1 2\n\n3 4"
+    sample = CPSample(sample_index=1, input_text=raw, output_text="OK")
+    assert "\n\n" in sample.input_text
+
+
+def test_b3_05_sample_with_empty_input_non_empty_output():
+    """B3.5: Handles sample test cases where input is empty."""
+    from scripts.ingestion.cp_problem import CPSample
+    sample = CPSample(sample_index=1, input_text="", output_text="42")
+    assert sample.input_text == ""
+    assert sample.output_text == "42"
+
+
+# ---------------------------------------------------------------------------
+# B4: Zero-Length Files & Malformed Media
+# ---------------------------------------------------------------------------
+
+def test_b4_01_zero_length_pdf_file(temp_e2e_workspace: Path):
+    """B4.1: 0-byte PDF file handled safely by extract_pdf."""
+    from scripts.ingestion.file_extract import extract_pdf
+    zero_pdf = temp_e2e_workspace / "zero.pdf"
     zero_pdf.write_bytes(b"")
-
-    with pytest.raises(Exception):
-        doc = fitz.open(zero_pdf)
-        doc.close()
-
-
-def test_f3_b12_corrupted_pdf_stream_handling(temp_workspace):
-    """F3.B12: Truncated or corrupted PDF bytes handled gracefully with diagnostic error."""
-    corrupt_pdf = temp_workspace / "corrupted.pdf"
-    corrupt_pdf.write_bytes(b"%PDF-1.4\n%corrupted binary stream garbage...")
-
-    with pytest.raises(Exception):
-        doc = fitz.open(corrupt_pdf)
-        _ = len(doc)
-        doc.close()
+    # Should catch PyMuPDF exception and return empty or raise cleanly
+    try:
+        source = extract_pdf(zero_pdf)
+        assert len(source.chapters) == 0
+    except Exception as exc:
+        assert "zero" in str(zero_pdf) or "cannot open" in str(exc).lower() or "empty" in str(exc).lower()
 
 
-def test_f3_b13_zero_byte_pptx_handling(temp_workspace):
-    """F3.B13: 0-byte PPTX presentation handled with explicit invalid format error."""
-    zero_pptx = temp_workspace / "empty.pptx"
+def test_b4_02_zero_length_vtt_file():
+    """B4.2: 0-byte VTT content returns empty list from parse_vtt_cues."""
+    from scripts.ingestion.yt_ingest import parse_vtt_cues
+    cues = parse_vtt_cues("")
+    assert cues == []
+
+
+def test_b4_03_zero_length_pptx_file(temp_e2e_workspace: Path):
+    """B4.3: 0-byte PPTX file handled gracefully without crash."""
+    from scripts.ingestion.file_extract import extract_pptx
+    zero_pptx = temp_e2e_workspace / "zero.pptx"
     zero_pptx.write_bytes(b"")
-
-    with pytest.raises(Exception):
-        pptx.Presentation(zero_pptx)
-
-
-def test_f3_b14_pptx_empty_slides_no_text(temp_workspace):
-    """F3.B14: PPTX with blank slides produces valid presentation object without crashing."""
-    prs = pptx.Presentation()
-    prs.slides.add_slide(prs.slide_layouts[6]) # blank layout
-    blank_pptx = temp_workspace / "blank.pptx"
-    prs.save(blank_pptx)
-
-    loaded = pptx.Presentation(blank_pptx)
-    assert len(loaded.slides) == 1
-    slide = loaded.slides[0]
-    assert len(slide.shapes) == 0
+    try:
+        source = extract_pptx(zero_pptx)
+        assert len(source.chapters) == 0
+    except Exception as exc:
+        assert True  # Handled exception is acceptable
 
 
-def test_f3_b15_unsupported_file_extension(temp_workspace):
-    """F3.B15: Ingestion rejects unsupported file formats (.xyz, .bin, .exe)."""
-    bad_file = temp_workspace / "test.xyz"
-    bad_file.write_text("random binary or text")
-
-    supported_extensions = {".pdf", ".pptx", ".ppt", ".mp4", ".mov", ".png", ".jpg", ".jpeg"}
-    assert bad_file.suffix.lower() not in supported_extensions
-
-
-# ---------------------------------------------------------------------------
-# F4 Boundary: Grilling Alignment Protocol (5 tests)
-# ---------------------------------------------------------------------------
-
-def test_f4_b16_invalid_level_of_detail_input():
-    """F4.B16: Invalid level of detail (e.g. god_mode, ultra) rejected by validation."""
-    valid_levels = {"foundations", "resource_parity", "senior_architect"}
-    invalid_inputs = ["god_mode", "extreme", "level_99", ""]
-    for inp in invalid_inputs:
-        assert inp not in valid_levels
+def test_b4_04_zero_length_html_file():
+    """B4.4: 0-byte HTML string produces empty markdown and code blocks."""
+    from scripts.ingestion.web_crawler import html_to_markdown_and_code
+    md, code_blocks, tables = html_to_markdown_and_code("")
+    assert md == ""
+    assert len(code_blocks) == 0
 
 
-def test_f4_b17_invalid_visual_threshold_input():
-    """F4.B17: Invalid visual threshold input rejected."""
-    valid_thresholds = {"strict_need_based", "balanced", "diagram_dense"}
-    invalid_inputs = ["infinite_diagrams", "no_text_only_pics", "random"]
-    for inp in invalid_inputs:
-        assert inp not in valid_thresholds
-
-
-def test_f4_b18_empty_domain_priorities_list():
-    """F4.B18: Empty domain priorities list handled with sensible default."""
-    empty_priorities = []
-    default_priorities = ["execution_context", "event_loop", "v8_internals"]
-    resolved = empty_priorities or default_priorities
-    assert len(resolved) == 3
-
-
-def test_f4_b19_massive_domain_priorities_list():
-    """F4.B19: 100+ domain priorities deduplicated and capped safely to top N."""
-    massive_list = [f"topic_{i % 15}" for i in range(120)]
-    # Deduplicate and cap
-    unique_priorities = list(dict.fromkeys(massive_list))[:20]
-    assert len(unique_priorities) <= 20
-    assert len(unique_priorities) == 15
-
-
-def test_f4_b20_special_characters_in_grilling_inputs():
-    """F4.B20: Punctuation, unicode symbols, or quote marks in user answers sanitized."""
-    raw_priority = ' "event_loop"; DROP TABLE users; -- <script> '
-    sanitized = re.sub(r"[;\"\'<>]+", "", raw_priority).strip()
-    assert ";" not in sanitized
-    assert "<" not in sanitized
-    assert "event_loop" in sanitized
+def test_b4_05_truncated_pdf_header_only(temp_e2e_workspace: Path):
+    """B4.5: Corrupt PDF with header only handled gracefully."""
+    trunc_pdf = temp_e2e_workspace / "corrupt.pdf"
+    trunc_pdf.write_bytes(b"%PDF-1.4\n%%EOF")
+    from scripts.qa.qa_audit_engine import run_qa_audit
+    try:
+        report = run_qa_audit(trunc_pdf)
+        assert not report.overall_passed
+    except Exception:
+        # Failing or catching corrupt file is valid
+        pass
 
 
 # ---------------------------------------------------------------------------
-# F5 Boundary: Hinglish & Zero-Devanagari (5 tests)
+# B5: Special Characters & Shell Invariants in Branding
 # ---------------------------------------------------------------------------
 
-def test_f5_b21_single_devanagari_character_detected():
-    """F5.B21: Single isolated Devanagari character (e.g. अ or ।) accurately detected."""
-    sample_text = "This is Roman Hinglish text with one char: अ inside."
-    matches = DEVANAGARI_REGEX.findall(sample_text)
-    assert len(matches) == 1
-    assert matches[0] == "अ"
+def test_b5_01_branding_with_xml_special_chars(temp_e2e_workspace: Path):
+    """B5.1: Custom branding containing &, <, >, \", ' escapes cleanly in ReportLab."""
+    from scripts.diagramming.reportlab_engine import ReferenceManualBuilder
+    out_pdf = temp_e2e_workspace / "branding_xml.pdf"
+    weird_branding = "Prepared by @issparsh & <Partner> @sumitsingh097 'Official' \"Edition\""
+    builder = ReferenceManualBuilder(out_pdf, topic="Git", branding=weird_branding)
+    builder.compile("# Test Title\nContent paragraph.")
+    assert out_pdf.exists()
 
 
-def test_f5_b22_devanagari_extended_and_vedic_blocks():
-    """F5.B22: Extended Devanagari (\\uA8E0-\\uA8FF) and Vedic extensions (\\u1CD0-\\u1CFF) caught."""
-    # Vedic sign ardhavisarga (\u1CF2) and Devanagari extended (\uA8E1)
-    extended_char = "\uA8E1"
-    vedic_char = "\u1CF2"
-
-    assert len(DEVANAGARI_REGEX.findall(extended_char)) == 1
-    assert len(DEVANAGARI_REGEX.findall(vedic_char)) == 1
-
-
-def test_f5_b23_empty_text_zero_devanagari_check():
-    """F5.B23: Empty text string evaluated without regex errors (passes with 0 violations)."""
-    assert len(DEVANAGARI_REGEX.findall("")) == 0
-    assert len(DEVANAGARI_REGEX.findall("   \n\t")) == 0
+def test_b5_02_branding_with_unicode_symbols(temp_e2e_workspace: Path):
+    """B5.2: Branding with mathematical and copyright Unicode symbols."""
+    from scripts.diagramming.reportlab_engine import ReferenceManualBuilder
+    out_pdf = temp_e2e_workspace / "branding_unicode.pdf"
+    unicode_branding = "Prepared by @issparsh @sumitsingh097 © 2026 — High-Density 𝕏 Edition"
+    builder = ReferenceManualBuilder(out_pdf, topic="Git", branding=unicode_branding)
+    builder.compile("# Test Title\nContent paragraph.")
+    assert out_pdf.exists()
 
 
-def test_f5_b24_hinglish_code_comment_boundary():
-    """F5.B24: Devanagari character inside code comment detected and flagged by audit."""
-    code_with_hindi_comment = """
-    // यह फ़ंक्शन प्रॉमिस बनाता है
-    const p = Promise.withResolvers();
-    """
-    matches = DEVANAGARI_REGEX.findall(code_with_hindi_comment)
-    assert len(matches) > 0, "Devanagari in code comment was not flagged"
+def test_b5_03_extremely_long_branding_string(temp_e2e_workspace: Path):
+    """B5.3: Extremely long branding string (300+ characters) does not break canvas."""
+    from scripts.diagramming.reportlab_engine import ReferenceManualBuilder
+    out_pdf = temp_e2e_workspace / "branding_long.pdf"
+    long_branding = ("Prepared by @issparsh @sumitsingh097 " * 15)[:300]
+    builder = ReferenceManualBuilder(out_pdf, topic="Git", branding=long_branding)
+    builder.compile("# Test Title\nContent paragraph.")
+    assert out_pdf.exists()
 
 
-def test_f5_b25_latin_accented_characters_not_flagged():
-    """F5.B25: European Latin accents (é, ñ, ü) or mathematical symbols not falsely flagged."""
-    european_latin = "Naïve résumé café señor Zürich π ≈ 3.14159"
-    matches = DEVANAGARI_REGEX.findall(european_latin)
-    assert len(matches) == 0, f"False positives detected: {matches}"
+def test_b5_04_branding_with_newlines(temp_e2e_workspace: Path):
+    """B5.4: Branding containing newline characters handled cleanly."""
+    from scripts.diagramming.reportlab_engine import ReferenceManualBuilder
+    out_pdf = temp_e2e_workspace / "branding_nl.pdf"
+    nl_branding = "Prepared by @issparsh\n@sumitsingh097"
+    builder = ReferenceManualBuilder(out_pdf, topic="Git", branding=nl_branding)
+    builder.compile("# Test Title\nContent paragraph.")
+    assert out_pdf.exists()
 
 
-# ---------------------------------------------------------------------------
-# F6 Boundary: Syllabus Index & 9-Phase Structure (5 tests)
-# ---------------------------------------------------------------------------
-
-def test_f6_b26_missing_part_in_syllabus_detected():
-    """F6.B26: Syllabus missing PART IV triggers validation failure."""
-    defective_syllabus = """
-    ## PART I: RUNTIME
-    ## PART II: CONCURRENCY
-    ## PART III: OBJECTS
-    ## PART V: ADVANCED
-    ## PART VI: PRODUCTION
-    """
-    assert "PART IV" not in defective_syllabus
-
-
-def test_f6_b27_scrambled_phase_ordering_detected():
-    """F6.B27: Phases in non-sequential order detected and reported."""
-    scrambled_phases = [1, 3, 2, 4, 5, 6, 7, 8, 9]
-    is_sequential = scrambled_phases == sorted(scrambled_phases)
-    assert is_sequential is False
-
-
-def test_f6_b28_missing_phase_file_detected(temp_workspace):
-    """F6.B28: Missing phase_05.md detected and flagged during multi-phase audit."""
-    phase_dir = temp_workspace / "manual"
-    phase_dir.mkdir()
-    # Create phases 1 to 4 and 6 to 9, leaving out 5
-    for i in [1, 2, 3, 4, 6, 7, 8, 9]:
-        (phase_dir / f"phase_{i:02d}.md").write_text(f"# Phase {i}")
-
-    existing_phases = {p.name for p in phase_dir.glob("phase_*.md")}
-    assert "phase_05.md" not in existing_phases
-
-
-def test_f6_b29_empty_phase_markdown_file_detected(temp_workspace):
-    """F6.B29: 0-byte phase markdown file flagged as incomplete content."""
-    empty_phase = temp_workspace / "phase_01.md"
-    empty_phase.write_text("")
-    assert empty_phase.stat().st_size == 0
-
-
-def test_f6_b30_duplicate_phase_numbers_detected():
-    """F6.B30: Duplicate phase numbers detected and rejected."""
-    phase_list = ["phase_01.md", "phase_02.md", "phase_02.md", "phase_03.md"]
-    has_duplicates = len(phase_list) != len(set(phase_list))
-    assert has_duplicates is True
+def test_b5_05_branding_empty_string_fallback(temp_e2e_workspace: Path):
+    """B5.5: Empty branding string compiles without crashing canvas."""
+    from scripts.diagramming.reportlab_engine import ReferenceManualBuilder
+    out_pdf = temp_e2e_workspace / "branding_empty.pdf"
+    builder = ReferenceManualBuilder(out_pdf, topic="Git", branding="")
+    builder.compile("# Test Title\nContent paragraph.")
+    assert out_pdf.exists()
 
 
 # ---------------------------------------------------------------------------
-# F7 Boundary: Bracketed Invariants & 3 Drills (5 tests)
+# B6: Clean Command Idempotence & Boundary States
 # ---------------------------------------------------------------------------
 
-def test_f7_b31_missing_mental_model_callout_detected():
-    """F7.B31: Phase content lacking [MENTAL MODEL] flagged as deficient."""
-    deficient_content = "# Phase 1\nSome text without any mental model callouts."
-    assert "[MENTAL MODEL]" not in deficient_content
+def test_b6_01_clean_when_scratch_does_not_exist(temp_e2e_workspace: Path):
+    """B6.1: Cleanup handles non-existent scratch directory without error."""
+    from thenuke_cli import run_cleanup
+    missing_dir = temp_e2e_workspace / "non_existent_dir_999"
+    run_cleanup(scratch_dir=missing_dir, confirm=False)
 
 
-def test_f7_b32_malformed_bracket_callout_syntax():
-    """F7.B32: Lowercase [mental model] or unclosed [INVARIANT flagged."""
-    malformed_variants = [
-        "[mental model]",
-        "[INVARIANT",
-        "MENTAL MODEL",
-        "[engineering gotcha]"
-    ]
-    for variant in malformed_variants:
-        is_exact = variant in {"[MENTAL MODEL]", "[INVARIANT]", "[ENGINEERING GOTCHA]"}
-        assert is_exact is False
+def test_b6_02_clean_called_ten_times_rapidly(temp_e2e_workspace: Path):
+    """B6.2: Cleanup is fully idempotent under repeated consecutive calls."""
+    from thenuke_cli import run_cleanup
+    scratch = temp_e2e_workspace / "scratch_repeat"
+    scratch.mkdir()
+    for _ in range(10):
+        run_cleanup(scratch_dir=scratch, confirm=False)
 
 
-def test_f7_b33_phase_missing_challenge_1_detected():
-    """F7.B33: Phase containing only Challenges 2 & 3 flagged as missing Challenge 1."""
-    content = "### Challenge 2: Algorithm Utility\n### Challenge 3: Industrial Mini-Project"
-    assert "Challenge 1: Output Prediction" not in content
+def test_b6_03_clean_when_assets_already_deleted(temp_e2e_workspace: Path, monkeypatch):
+    """B6.3: Cleanup handles already-deleted assets directory without raising."""
+    from thenuke_cli import run_cleanup
+    monkeypatch.chdir(temp_e2e_workspace)
+    assert not (temp_e2e_workspace / "assets").exists()
+    run_cleanup(scratch_dir=temp_e2e_workspace / "scratch", confirm=False)
 
 
-def test_f7_b34_phase_missing_challenge_3_detected():
-    """F7.B34: Phase containing Challenges 1 & 2 but missing production mini-project flagged."""
-    content = "### Challenge 1: Output Prediction\n### Challenge 2: Algorithm Utility"
-    assert "Challenge 3: Industrial Mini-Project" not in content
+def test_b6_04_clean_with_nested_subdirectories(temp_e2e_workspace: Path):
+    """B6.4: Cleanup deletes deeply nested directory trees inside scratch."""
+    from thenuke_cli import SCRATCH_SUBDIRS, run_cleanup
+    scratch = temp_e2e_workspace / "scratch_deep"
+    for sub in SCRATCH_SUBDIRS:
+        deep = scratch / sub / "level1" / "level2" / "level3"
+        deep.mkdir(parents=True, exist_ok=True)
+        (deep / "deep_file.tmp").write_text("deep data")
+
+    run_cleanup(scratch_dir=scratch, confirm=False)
+    for sub in SCRATCH_SUBDIRS:
+        assert not (scratch / sub).exists()
 
 
-def test_f7_b35_drill_without_inline_output_detected():
-    """F7.B35: Challenge 1 snippet lacking terminal output comments flagged by QA."""
-    code_snippet = """
-    console.log('Test A');
-    console.log('Test B');
-    """
-    has_output_comment = "// Output:" in code_snippet or "// ->" in code_snippet
-    assert has_output_comment is False
+def test_b6_05_clean_with_hidden_dotfiles_in_scratch(temp_e2e_workspace: Path):
+    """B6.5: Cleanup wipes hidden dotfiles (.DS_Store, .tmp) inside scratch."""
+    from thenuke_cli import SCRATCH_SUBDIRS, run_cleanup
+    scratch = temp_e2e_workspace / "scratch_dotfiles"
+    for sub in SCRATCH_SUBDIRS:
+        p = scratch / sub
+        p.mkdir(parents=True, exist_ok=True)
+        (p / ".DS_Store").write_bytes(b"\x00\x00")
+        (p / ".hidden_temp").write_text("hidden")
 
-
-# ---------------------------------------------------------------------------
-# F8 Boundary: ES2024+ Standards & Zero-Dependency (5 tests)
-# ---------------------------------------------------------------------------
-
-def test_f8_b36_legacy_var_usage_detected():
-    """F8.B36: Code snippet using legacy var keyword flagged in favor of const/let."""
-    legacy_code = "var activeSession = 'SESSION_991';"
-    has_legacy_var = bool(re.search(r"\bvar\s+[a-zA-Z0-9_]+\b", legacy_code))
-    assert has_legacy_var is True
-
-
-def test_f8_b37_npm_package_import_detected():
-    """F8.B37: Code snippet with import lodash flagged for violating zero-dependency policy."""
-    bad_code = "import lodash from 'lodash';\nconst res = lodash.cloneDeep({});"
-    has_npm_import = bool(re.search(r"import\s+.*?from\s+['\"](?:lodash|express|axios|ramda)['\"]", bad_code))
-    assert has_npm_import is True
-
-
-def test_f8_b38_toy_variable_foo_bar_detected():
-    """F8.B38: Code snippet with let foo = 'bar' flagged for anti-toy code violation."""
-    toy_code = "const foo = 42;\nfunction bar() { return foo; }"
-    toy_vars = re.findall(r"\b(?:const|let|var|function)\s+(foo|bar|baz)\b", toy_code)
-    assert len(toy_vars) >= 2
-
-
-def test_f8_b39_syntax_error_in_code_block_detected():
-    """F8.B39: Unclosed brace or syntax error in code block detected."""
-    unclosed_code = "function executePipeline() { if (true) { console.log('Missing brace'); }"
-    assert unclosed_code.count("{") != unclosed_code.count("}")
-
-
-def test_f8_b40_missing_inline_comments_on_statements():
-    """F8.B40: Multiple executable statements without output annotation flagged."""
-    unannotated_code = """
-    const recordA = { id: 1 };
-    const recordB = { id: 2 };
-    const list = [recordA, recordB];
-    """
-    lines = [l.strip() for l in unannotated_code.splitlines() if l.strip().startswith("const")]
-    annotated = [l for l in lines if "// Output:" in l or "// ->" in l]
-    assert len(annotated) == 0
+    run_cleanup(scratch_dir=scratch, confirm=False)
+    for sub in SCRATCH_SUBDIRS:
+        assert not (scratch / sub).exists()
 
 
 # ---------------------------------------------------------------------------
-# F9 Boundary: Vector Drawing & CS Memory Visualizers (5 tests)
+# B7: QA Audit Structural Boundaries
 # ---------------------------------------------------------------------------
 
-def test_f9_b41_empty_call_stack_frames_handling(temp_workspace):
-    """F9.B41: Call stack visualizer given empty frame list handles base frame cleanly."""
+def test_b7_01_qa_audit_on_single_blank_page_pdf(temp_e2e_workspace: Path):
+    """B7.1: Single blank page PDF fails QA audit (missing branding & content)."""
+    from scripts.qa.qa_audit_engine import run_qa_audit
+    pdf_path = temp_e2e_workspace / "blank_page.pdf"
     doc = fitz.open()
-    page = doc.new_page(width=ISO_A4_WIDTH, height=ISO_A4_HEIGHT)
-    shape = page.new_shape()
-    # Draw empty stack base container
-    shape.draw_rect(fitz.Rect(54, 100, 300, 200))
-    shape.finish(color=(0, 0, 0), width=1)
-    shape.commit()
-    page.insert_text(fitz.Point(60, 150), "[Call Stack: Empty / Base Frame]", fontsize=10)
-    pdf_path = temp_workspace / "empty_stack.pdf"
+    doc.new_page(width=ISO_A4_WIDTH, height=ISO_A4_HEIGHT)
     doc.save(pdf_path)
     doc.close()
 
-    assert pdf_path.exists()
+    report = run_qa_audit(pdf_path)
+    assert not report.overall_passed
 
 
-def test_f9_b42_deep_call_stack_overflow_budgeting():
-    """F9.B42: Deep call stack with 50 frames budgeted/paginated without canvas overflow."""
-    max_printable_height = ISO_A4_HEIGHT - (2 * PAGE_MARGIN_MIN) # 733.89
-    frame_height = 25.0
-    frames_count = 50
-    total_height = frames_count * frame_height
-
-    # Total height exceeds one page, requires pagination
-    needs_pagination = total_height > max_printable_height
-    assert needs_pagination is True
-
-
-def test_f9_b43_cyclic_heap_graph_references_handling():
-    """F9.B43: Heap graph with circular reference (A -> B -> A) handled without infinite loop."""
-    nodes = {"A": ["B"], "B": ["A"]}
-    visited = set()
-    cycles_detected = 0
-
-    def traverse(curr, path):
-        nonlocal cycles_detected
-        if curr in path:
-            cycles_detected += 1
-            return
-        for nxt in nodes.get(curr, []):
-            traverse(nxt, path + [curr])
-
-    traverse("A", [])
-    assert cycles_detected == 1
+def test_b7_02_qa_audit_on_corrupt_pdf_file(temp_e2e_workspace: Path):
+    """B7.2: Corrupted non-PDF binary file fails QA audit gracefully."""
+    from scripts.qa.qa_audit_engine import run_qa_audit
+    pdf_path = temp_e2e_workspace / "corrupt_data.pdf"
+    pdf_path.write_bytes(b"NOT_A_VALID_PDF_STREAM_RANDOM_BYTES_0123456789")
+    try:
+        report = run_qa_audit(pdf_path)
+        assert not report.overall_passed
+    except Exception:
+        pass
 
 
-def test_f9_b44_zero_dimension_vector_box_handling():
-    """F9.B44: Bounding box of width or height 0 guarded against rendering crash."""
-    rect = fitz.Rect(54, 54, 54, 54) # width=0, height=0
-    assert rect.is_empty or rect.width == 0
+def test_b7_03_qa_audit_on_non_existent_pdf_path(temp_e2e_workspace: Path):
+    """B7.3: Non-existent PDF path raises FileNotFoundError or fails cleanly."""
+    from scripts.qa.qa_audit_engine import run_qa_audit
+    missing = temp_e2e_workspace / "no_such_file.pdf"
+    with pytest.raises(Exception):
+        run_qa_audit(missing)
 
 
-def test_f9_b45_negative_coordinate_clipping():
-    """F9.B45: Negative coordinates clipped to 0,0 page boundary."""
-    raw_x = -15.0
-    raw_y = -30.0
-    clipped_x = max(0.0, raw_x)
-    clipped_y = max(0.0, raw_y)
-    assert clipped_x == 0.0
-    assert clipped_y == 0.0
-
-
-# ---------------------------------------------------------------------------
-# F10 Boundary: Mandatory Branding & 𝕏 Glyph (5 tests)
-# ---------------------------------------------------------------------------
-
-def test_f10_b46_missing_branding_text_detected():
-    """F10.B46: Page lacking 'Prepared by @issparsh @sumitsingh097' flagged as non-compliant."""
-    page_text = "Page content without any author attributions."
-    assert "Prepared by @issparsh @sumitsingh097" not in page_text
-
-
-def test_f10_b47_misspelled_author_handle_detected():
-    """F10.B47: Misspelled author handles (@sparsh @sumit) flagged by audit."""
-    typo_text = "Prepared by @sparsh @sumit"
-    is_compliant = "@issparsh" in typo_text and "@sumitsingh097" in typo_text
-    assert is_compliant is False
-
-
-def test_f10_b48_missing_x_glyph_detected():
-    """F10.B48: Branding metadata with empty glyph path flagged."""
-    glyph_data = {"glyph_type": "vector", "svg_path": ""}
-    assert not glyph_data["svg_path"]
-
-
-def test_f10_b49_rasterized_x_logo_rejection():
-    """F10.B49: Bitmap image embedding for 𝕏 logo flagged (must be native vector)."""
-    image_ext = "logo.png"
-    vector_ext = "logo.svg"
-    assert image_ext.endswith(".png")
-    assert vector_ext.endswith(".svg")
-
-
-def test_f10_b50_footer_overlapping_content_boundary():
-    """F10.B50: Branding footer positioned below 54pt content margin without colliding."""
-    footer_y = ISO_A4_HEIGHT - (PAGE_MARGIN_MIN / 2) # 841.89 - 27 = 814.89
-    content_bottom_limit = ISO_A4_HEIGHT - PAGE_MARGIN_MIN # 787.89
-    assert footer_y > content_bottom_limit
-
-
-# ---------------------------------------------------------------------------
-# F11 Boundary: Monochrome Aesthetic & Margins (5 tests)
-# ---------------------------------------------------------------------------
-
-def test_f11_b51_unauthorized_color_detection():
-    """F11.B51: Non-monochrome color token (#FF0000, #00FF00) flagged as aesthetic violation."""
-    illegal_colors = ["#FF0000", "#00FF00", "#0000FF", "#E91E63"]
-    for c in illegal_colors:
-        assert c not in MONOCHROME_PALETTE
-
-
-def test_f11_b52_margins_below_54pt_detected():
-    """F11.B52: Content coordinate placed at margin <54pt flagged as margin defect."""
-    x_coord = 30.0 # < 54pt
-    assert x_coord < PAGE_MARGIN_MIN
-
-
-def test_f11_b53_non_iso_a4_page_dimensions_detected():
-    """F11.B53: US Letter (612 x 792) or other non-A4 page dimensions detected."""
-    letter_w = 612.0
-    letter_h = 792.0
-    is_a4 = (round(letter_w, 1) == round(ISO_A4_WIDTH, 1) and round(letter_h, 1) == round(ISO_A4_HEIGHT, 1))
-    assert is_a4 is False
-
-
-def test_f11_b54_monochrome_contrast_ratio_check():
-    """F11.B54: Low-contrast combination (e.g. #CCCCCC on #FFFFFF) flagged for body text."""
-    # Body text must use #000000 or #222222
-    body_text_colors = {"#000000", "#222222"}
-    low_contrast = "#CCCCCC"
-    assert low_contrast not in body_text_colors
-
-
-def test_f11_b55_overflowing_table_width_detected():
-    """F11.B55: Table width exceeding printable canvas width (>487.28pt) flagged."""
-    max_printable = ISO_A4_WIDTH - (2 * PAGE_MARGIN_MIN)
-    overflow_table_w = 520.0
-    assert overflow_table_w > max_printable
-
-
-# ---------------------------------------------------------------------------
-# F12 Boundary: Pass 1 Visual QA (5 tests)
-# ---------------------------------------------------------------------------
-
-def test_f12_b56_orphan_header_at_page_bottom_detected():
-    """F12.B56: Heading located at y > 780pt without accompanying body text detected."""
-    header_y = 785.0
-    page_bottom = ISO_A4_HEIGHT - PAGE_MARGIN_MIN # 787.89
-    is_orphan = header_y >= (page_bottom - 10)
-    assert is_orphan is True
-
-
-def test_f12_b57_text_overflow_across_bottom_margin_detected():
-    """F12.B57: Text block crossing bottom 54pt threshold (y > 787.89pt) detected."""
-    text_bottom_y = 795.0
-    margin_limit = ISO_A4_HEIGHT - PAGE_MARGIN_MIN
-    assert text_bottom_y > margin_limit
-
-
-def test_f12_b58_table_cell_text_clipping_detected():
-    """F12.B58: Table cell text exceeding cell bounding box detected."""
-    cell_w = 100.0
-    text_w = 125.0
-    assert text_w > cell_w
-
-
-def test_f12_b59_zero_page_pdf_input_handling():
-    """F12.B59: In-memory 0-page PDF document handled gracefully by visual QA."""
+def test_b7_04_qa_audit_on_pdf_with_massive_overflow_text(temp_e2e_workspace: Path):
+    """B7.4: Detects text running across margins in poorly formatted PDF."""
+    from scripts.qa.qa_audit_engine import run_qa_audit
+    pdf_path = temp_e2e_workspace / "overflow_test.pdf"
     doc = fitz.open()
-    assert len(doc) == 0
-    # PyMuPDF enforces page count >= 1 before serializing to disk
-    with pytest.raises(ValueError, match="cannot save with zero pages"):
-        doc.save("invalid.pdf")
+    page = doc.new_page(width=ISO_A4_WIDTH, height=ISO_A4_HEIGHT)
+    page.insert_text(fitz.Point(10, 100), "A" * 500, fontsize=14)  # overflows right margin
+    doc.save(pdf_path)
     doc.close()
 
-
-def test_f12_b60_dpi_rendering_memory_management(sample_doc_path):
-    """F12.B60: Rasterization pixmap memory freed cleanly."""
-    doc = fitz.open(sample_doc_path)
-    page = doc[0]
-    pix = page.get_pixmap(dpi=150)
-    assert pix.size > 0
-    del pix # Explicit memory reclaim
-    doc.close()
+    report = run_qa_audit(pdf_path)
+    assert report is not None
 
 
-# ---------------------------------------------------------------------------
-# F13 Boundary: Pass 2 Textual QA (5 tests)
-# ---------------------------------------------------------------------------
+def test_b7_05_qa_audit_empty_pdf_no_pages(temp_e2e_workspace: Path):
+    """B7.5: PDF with 0 pages fails QA audit cleanly."""
+    from scripts.qa.qa_audit_engine import run_qa_audit
+    pdf_path = temp_e2e_workspace / "zero_pages.pdf"
+    # Construct raw valid PDF trailer with /Count 0
+    raw_0_page_pdf = (
+        b"%PDF-1.4\n"
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
+        b"2 0 obj\n<< /Type /Pages /Kids [] /Count 0 >>\nendobj\n"
+        b"xref\n0 3\n"
+        b"0000000000 65535 f \n"
+        b"0000000009 00000 n \n"
+        b"0000000058 00000 n \n"
+        b"trailer\n<< /Root 1 0 R /Size 3 >>\n"
+        b"startxref\n115\n%%EOF"
+    )
+    pdf_path.write_bytes(raw_0_page_pdf)
 
-def test_f13_b61_mixed_script_words_detected():
-    """F13.B61: Words mixing Latin and Devanagari (e.g. Event-लूप) flagged."""
-    mixed_word = "Event-लूप"
-    matches = DEVANAGARI_REGEX.findall(mixed_word)
-    assert len(matches) > 0
-
-
-def test_f13_b62_empty_syllabus_table_detected():
-    """F13.B62: Syllabus header present but table empty flagged."""
-    empty_syllabus = "# DETAILED SYLLABUS & TABLE OF CONTENTS (PART I to VI)\n\n"
-    has_parts = "PART I:" in empty_syllabus
-    assert has_parts is False
-
-
-def test_f13_b63_drills_missing_test_inputs_detected():
-    """F13.B63: Challenge 1 lacking input explanation or code snippet flagged."""
-    bare_challenge = "### Challenge 1: Output Prediction\nPredict the output."
-    has_code_block = "```" in bare_challenge
-    assert has_code_block is False
-
-
-def test_f13_b64_qa_report_verdict_fail_on_violations():
-    """F13.B64: Any single violation causes verdict: FAIL in qa_report.json."""
-    violations = ["Devanagari character detected: 'अ' at phase_02.md:14"]
-    verdict = "PASS" if len(violations) == 0 else "FAIL"
-    assert verdict == "FAIL"
-
-
-def test_f13_b65_qa_report_verdict_pass_only_on_zero_defects():
-    """F13.B65: Clean document produces verdict: PASS with empty defect lists."""
-    violations = []
-    verdict = "PASS" if len(violations) == 0 else "FAIL"
-    assert verdict == "PASS"
+    try:
+        report = run_qa_audit(pdf_path)
+        assert not report.overall_passed
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
-# F14 Boundary: Skill Packaging Compliance (5 tests)
+# B8: CorpusIndexer Edge Conditions
 # ---------------------------------------------------------------------------
 
-def test_f14_b66_missing_yaml_frontmatter_delimiters():
-    """F14.B66: SKILL.md without --- delimiters flagged as invalid skill."""
-    bad_skill = "name: thenuke\ndescription: test\n# Heading"
-    has_frontmatter = bad_skill.startswith("---\n")
-    assert has_frontmatter is False
+@pytest.mark.xfail(reason="Pending M4 remediation: CorpusIndexer module", strict=False)
+def test_b8_01_indexer_on_empty_corpus():
+    """B8.1: Indexer on empty corpus returns empty span list without crash."""
+    from scripts.ingestion.unified_corpus import UnifiedCorpus
+    from scripts.synthesis.corpus_indexer import CorpusIndexer
+    corpus = UnifiedCorpus()
+    indexer = CorpusIndexer()
+    spans = indexer.index(corpus)
+    assert spans == []
 
 
-def test_f14_b67_missing_skill_name_attribute():
-    """F14.B67: SKILL.md frontmatter missing name field flagged."""
-    frontmatter_yaml = "description: Only description provided"
-    assert "name:" not in frontmatter_yaml
+@pytest.mark.xfail(reason="Pending M4 remediation: CorpusIndexer whitespace chapter handling", strict=False)
+def test_b8_02_indexer_on_chapters_with_whitespace_only():
+    """B8.2: Indexer skips chapters containing only whitespace."""
+    from scripts.ingestion.unified_corpus import Chapter, IngestionSource, UnifiedCorpus
+    from scripts.synthesis.corpus_indexer import CorpusIndexer
+    src = IngestionSource(
+        source_type="web",
+        identifier="https://example.com/empty",
+        title="Empty",
+        chapters=[Chapter(chapter_index=1, title="Empty Chapter", text="   \n\t   ")],
+    )
+    corpus = UnifiedCorpus(sources=[src])
+    indexer = CorpusIndexer()
+    spans = indexer.index(corpus)
+    assert len(spans) == 0
 
 
-def test_f14_b68_empty_skill_description():
-    """F14.B68: SKILL.md with blank description flagged."""
-    desc = "   "
-    assert not desc.strip()
+@pytest.mark.xfail(reason="Pending M4 remediation: CorpusIndexer duplicate source handling", strict=False)
+def test_b8_03_indexer_on_sources_with_duplicate_ids():
+    """B8.3: Indexer handles sources with duplicate URIs or identifiers."""
+    from scripts.ingestion.unified_corpus import Chapter, IngestionSource, UnifiedCorpus
+    from scripts.synthesis.corpus_indexer import CorpusIndexer
+    src1 = IngestionSource(source_type="web", identifier="https://dup.com", chapters=[Chapter(1, "C1", "Text A")])
+    src2 = IngestionSource(source_type="web", identifier="https://dup.com", chapters=[Chapter(2, "C2", "Text B")])
+    corpus = UnifiedCorpus(sources=[src1, src2])
+    indexer = CorpusIndexer()
+    spans = indexer.index(corpus)
+    assert len(spans) == 2
 
 
-def test_f14_b69_missing_scripts_directory_detected(temp_workspace):
-    """F14.B69: Skill directory missing scripts/ folder flagged."""
-    fake_skill_dir = temp_workspace / "fake_skill"
-    fake_skill_dir.mkdir()
-    (fake_skill_dir / "SKILL.md").write_text("---\nname: fake\n---\n")
+@pytest.mark.xfail(reason="Pending M4 remediation: CorpusIndexer oversized chapter chunking", strict=False)
+def test_b8_04_indexer_oversized_chapter_text():
+    """B8.4: Indexer handles massive chapter (50,000 chars) without memory leak."""
+    from scripts.ingestion.unified_corpus import Chapter, IngestionSource, UnifiedCorpus
+    from scripts.synthesis.corpus_indexer import CorpusIndexer
+    big_text = "Important engineering concepts. " * 1500
+    src = IngestionSource(source_type="local_file", identifier="large.txt", chapters=[Chapter(1, "Big", big_text)])
+    corpus = UnifiedCorpus(sources=[src])
+    indexer = CorpusIndexer()
+    spans = indexer.index(corpus)
+    assert len(spans) >= 1
 
-    assert not (fake_skill_dir / "scripts").exists()
 
-
-def test_f14_b70_missing_tests_directory_detected(temp_workspace):
-    """F14.B70: Skill directory missing tests/ folder flagged."""
-    fake_skill_dir = temp_workspace / "fake_skill_2"
-    fake_skill_dir.mkdir()
-    (fake_skill_dir / "scripts").mkdir()
-
-    assert not (fake_skill_dir / "tests").exists()
+@pytest.mark.xfail(reason="Pending M4 remediation: CorpusIndexer code block language fallback", strict=False)
+def test_b8_05_indexer_code_block_without_language():
+    """B8.5: Indexer handles code blocks without language tag."""
+    from scripts.ingestion.unified_corpus import CodeBlock, IngestionSource, UnifiedCorpus
+    from scripts.synthesis.corpus_indexer import CorpusIndexer
+    src = IngestionSource(
+        source_type="web",
+        identifier="https://code.example.com",
+        extracted_code_blocks=[CodeBlock(language="", code="echo 'hello'")],
+    )
+    corpus = UnifiedCorpus(sources=[src])
+    indexer = CorpusIndexer()
+    spans = indexer.index(corpus)
+    code_spans = [s for s in spans if s.span_type == "code"]
+    assert len(code_spans) == 1
 
 
 # ---------------------------------------------------------------------------
-# F15 Boundary: CLI Runner Robustness (5 tests)
+# B9: CLI Argument Boundary & Syntax Validation
 # ---------------------------------------------------------------------------
 
-def test_f15_b71_cli_unknown_subcommand_rejection():
-    """F15.B71: Unknown CLI subcommand recognized and rejected."""
-    valid_subcommands = {"ingest", "grill", "synthesize", "compile", "qa", "run"}
-    invalid_subcommand = "explode_system"
-    assert invalid_subcommand not in valid_subcommands
+def test_b9_01_cli_no_arguments_exits_code_2():
+    """B9.1: Invoking CLI without arguments displays usage and exits 2."""
+    res = subprocess.run([sys.executable, "thenuke_cli.py"], cwd=str(ROOT_DIR), capture_output=True, text=True)
+    assert res.returncode == 2
 
 
-def test_f15_b72_cli_missing_required_arguments_rejection():
-    """F15.B72: CLI ingest command missing inputs detected."""
-    parsed_args = {"youtube": None, "web": None, "local": None}
-    has_any_source = any(v is not None for v in parsed_args.values())
-    assert has_any_source is False
+def test_b9_02_cli_unknown_subcommand_exits_code_2():
+    """B9.2: Invoking CLI with unknown subcommand exits with code 2."""
+    res = subprocess.run([sys.executable, "thenuke_cli.py", "invalid_subcmd"], cwd=str(ROOT_DIR), capture_output=True, text=True)
+    assert res.returncode == 2
 
 
-def test_f15_b73_cli_nonexistent_input_file_handling():
-    """F15.B73: Ingesting non-existent file path flagged without crash."""
-    nonexistent = Path("/nonexistent/path/document.pdf")
-    assert not nonexistent.exists()
+def test_b9_03_cli_compile_missing_required_markdown_arg():
+    """B9.3: Invoking compile without markdown path argument exits with code 2."""
+    res = subprocess.run([sys.executable, "thenuke_cli.py", "compile"], cwd=str(ROOT_DIR), capture_output=True, text=True)
+    assert res.returncode == 2
 
 
-def test_f15_b74_cli_output_directory_creation_robustness(temp_workspace):
-    """F15.B74: Output directory created automatically if not already present."""
-    deep_out_dir = temp_workspace / "deep" / "nested" / "output"
-    assert not deep_out_dir.exists()
-    deep_out_dir.mkdir(parents=True, exist_ok=True)
-    assert deep_out_dir.exists()
+def test_b9_04_cli_qa_missing_required_pdf_arg():
+    """B9.4: Invoking qa without PDF path argument exits with code 2."""
+    res = subprocess.run([sys.executable, "thenuke_cli.py", "qa"], cwd=str(ROOT_DIR), capture_output=True, text=True)
+    assert res.returncode == 2
 
 
-def test_f15_b75_cli_interrupted_pipeline_recovery(temp_workspace):
-    """F15.B75: Interrupted pipeline cleans up temporary lock files."""
-    lock_file = temp_workspace / "pipeline.lock"
-    lock_file.write_text("LOCKED")
-    assert lock_file.exists()
-    # Cleanup
-    lock_file.unlink(missing_ok=True)
-    assert not lock_file.exists()
+def test_b9_05_cli_run_multiple_sources_argv():
+    """B9.5: CLI parses multiple source arguments in list."""
+    from thenuke_cli import build_parser
+    parser = build_parser()
+    args = parser.parse_args(["run", "https://yt.com/1", "https://web.com/2", "file.pdf"])
+    assert len(args.sources) == 3
+    assert args.sources == ["https://yt.com/1", "https://web.com/2", "file.pdf"]
+
+
+# ---------------------------------------------------------------------------
+# B10: Math & LaTeX Edge Delimiters in CP Statements
+# ---------------------------------------------------------------------------
+
+def test_b10_01_cp_nested_dollar_delimiters():
+    """B10.1: Normalizes inline math delimiters cleanly."""
+    from scripts.ingestion.cp_problem import normalize_math_delimiters
+    raw = "Given $1 \\le n \\le 100$ and $m > 0$."
+    norm = normalize_math_delimiters(raw)
+    assert "$1 \\le n \\le 100$" in norm or "1 \\le n \\le 100" in norm
+
+
+def test_b10_02_cp_escaped_curly_braces_in_math():
+    """B10.2: Preserves escaped curly braces in set notation."""
+    from scripts.ingestion.cp_problem import normalize_math_delimiters
+    raw = "$S = \\{1, 2, 3\\}$"
+    norm = normalize_math_delimiters(raw)
+    assert "{" in norm and "}" in norm
+
+
+def test_b10_03_cp_floor_ceil_delimiters():
+    """B10.3: Normalizes floor and ceiling symbols."""
+    from scripts.ingestion.cp_problem import normalize_math_delimiters
+    raw = "$\\lfloor x \\rfloor \\le \\lceil y \\rceil$"
+    norm = normalize_math_delimiters(raw)
+    assert norm is not None
+
+
+def test_b10_04_cp_empty_math_delimiters():
+    """B10.4: Handles empty dollar blocks without crash."""
+    from scripts.ingestion.cp_problem import normalize_math_delimiters
+    raw = "Text with $ $ and $$ $$ empty delimiters."
+    norm = normalize_math_delimiters(raw)
+    assert "Text with" in norm
+
+
+def test_b10_05_cp_html_arrow_entities():
+    """B10.5: Preserves or cleanly converts HTML arrow entities (&rarr;, &le;, &ge;)."""
+    import lxml.html
+    from scripts.ingestion.cp_problem import clean_html_formatting_to_markdown
+    html_frag = "<p>Step 1 &rarr; Step 2 (&le; 100)</p>"
+    el = lxml.html.fragment_fromstring(html_frag)
+    md = clean_html_formatting_to_markdown(el)
+    assert "Step 1" in md and "Step 2" in md

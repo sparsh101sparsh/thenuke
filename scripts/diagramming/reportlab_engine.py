@@ -608,9 +608,10 @@ class PublicationCanvas(canvas.Canvas):
 class ReferenceManualBuilder:
     """Builds an archival reference manual conforming to the style specification."""
 
-    def __init__(self, output_path: Union[str, Path], topic: str = "Git"):
+    def __init__(self, output_path: Union[str, Path], topic: str = "Git", branding: Optional[str] = None):
         self.output_path = Path(output_path)
         self.topic = topic
+        self.branding = branding
         self.styles = self._init_styles()
 
     def _init_styles(self) -> Dict[str, ParagraphStyle]:
@@ -1434,15 +1435,22 @@ class ReferenceManualBuilder:
         flowables = self.parse_markdown_to_flowables(markdown_text)
 
         is_cp_doc = (":::sample" in markdown_text or "**Platform:**" in markdown_text or "Problem ID:" in markdown_text)
-        canvas_maker = PublicationCanvas
-        canvas_maker.is_cp = is_cp_doc
-        if is_cp_doc:
-            canvas_maker.doc_title = self.topic
-            canvas_maker.edition_label = "Competitive Programming Reference Edition"
-        else:
-            canvas_maker.doc_title = f"{self.topic}: The Complete Reference Manual"
-            canvas_maker.edition_label = "Monochrome Reference Edition"
+        class _Canvas(PublicationCanvas):
+            pass
 
-        doc.build(flowables, canvasmaker=canvas_maker)
+        _Canvas.is_cp = is_cp_doc
+        if is_cp_doc:
+            _Canvas.doc_title = self.topic
+            _Canvas.edition_label = "Competitive Programming Reference Edition"
+        else:
+            _Canvas.doc_title = f"{self.topic}: The Complete Reference Manual"
+            _Canvas.edition_label = "Monochrome Reference Edition"
+
+        if self.branding is not None:
+            _Canvas.author_branding = self.branding
+        else:
+            _Canvas.author_branding = "Prepared by @issparsh @sumitsingh097"
+
+        doc.build(flowables, canvasmaker=_Canvas)
         logger.info(f"Published PDF compiled via ReportLab: {self.output_path}")
         return self.output_path

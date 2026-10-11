@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "thenuke"
+version = "2.3.0"
+description = "Autonomous Multi-Modal Documentation Engine & Engineering Reference Manual Synthesizer"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "@issparsh"},
+    {name = "@sumitsingh097"}
+]
+keywords = [
+    "documentation",
+    "pdf-generation",
+    "reportlab",
+    "competitive-programming",
+    "multimodal-ingestion",
+    "hinglish"
+]
+dependencies = [
+    "pymupdf>=1.24.0",
+    "reportlab>=4.1.0",
+    "yt-dlp>=2024.0.0",
+    "faster-whisper>=1.0.0",
+    "lxml>=5.0.0",
+    "requests>=2.31.0",
+    "pillow>=10.0.0",
+    "python-pptx>=1.0.0",
+    "beautifulsoup4>=4.12.0",
+]
+
+[project.optional-dependencies]
+cp = [
+    "online-judge-tools>=11.5.0",
+    "beautifulsoup4>=4.12.0",
+]
+whisper = [
+    "faster-whisper>=1.0.0",
+]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[project.scripts]
+thenuke = "thenuke_cli:main"
+
+[tool.setuptools]
+py-modules = ["thenuke_cli"]
+packages = [
+    "scripts",
+    "scripts.diagramming",
+    "scripts.grilling",
+    "scripts.ingestion",
+    "scripts.multi_agent",
+    "scripts.qa",
+    "scripts.quotes",
+    "scripts.synthesis"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
