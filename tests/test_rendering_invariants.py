@@ -74,7 +74,7 @@ class TestMathParityAndScoping:
     """Verifies that odd dollar counts, regexes, and currency signs never invert parity."""
 
     def test_regex_with_dollar_inside_backticks(self):
-        text = "Explanation: 'meOw' matches regex `^[mM]+[eE]+[oO]+[wW]+$`. Next condition is $t (1 \le t \le 10^4)$."
+        text = r"Explanation: 'meOw' matches regex `^[mM]+[eE]+[oO]+[wW]+$`. Next condition is $t (1 \le t \le 10^4)$."
         html = md_to_reportlab_html(text)
         assert '<font face="Courier" size="8.5">^[mM]+[eE]+[oO]+[wW]+$</font>' in html
         assert "<i>t</i>" in html
@@ -88,7 +88,7 @@ class TestMathParityAndScoping:
         assert "Line 1: Let $x be an unclosed variable." in html
 
     def test_currency_and_isolated_dollar_handling(self):
-        text = "The entry fee is $100 and bonus is $50. Bounds are $1 \le k \le 10^9$."
+        text = r"The entry fee is $100 and bonus is $50. Bounds are $1 \le k \le 10^9$."
         html = md_to_reportlab_html(text)
         assert "$100" in html
         assert "$50" in html
@@ -202,7 +202,7 @@ class TestMathTypographyFidelity:
         assert "&pi;" in html
 
     def test_delimiter_normalizations(self):
-        """Verifies triple dollars, \(...\), \[...\], and spaced dollars in markdown."""
+        r"""Verifies triple dollars, \(...\), \[...\], and spaced dollars in markdown."""
         md = r"Bounds: $$$10^5$$$ and \( y \ge 0 \) and $ 1 \le x \le n $ with \[ \sum i \]."
         html = md_to_reportlab_html(md)
         assert "$$$" not in html
@@ -257,7 +257,7 @@ class TestEndToEndCompilationInvariants:
     """Compiles an adversarial stress document and validates zero QA violations."""
 
     def test_compile_adversarial_document(self):
-        md_content = """# Competitive Programming Stress Test Reference Manual
+        md_content = r"""# Competitive Programming Stress Test Reference Manual
 
 **Platform:** Codeforces | **Problem ID:** STRESS-01 | **Time Limit:** 2.0 s | **Memory Limit:** 256 MB
 
